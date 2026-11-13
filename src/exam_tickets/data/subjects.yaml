@@ -1,1 +1,16 @@
-subjects: []
+subjects:
+  - slug: java
+    folder: Java
+    label: Java
+    id_prefix: J
+    languages: [kk]
+  - slug: fsharp
+    folder: "F#"
+    label: "F#"
+    id_prefix: F
+    languages: [ru]
+  - slug: docker
+    folder: Docker
+    label: Docker
+    id_prefix: D
+    languages: [ru, kk]

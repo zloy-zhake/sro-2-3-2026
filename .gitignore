@@ -16,3 +16,6 @@ src/exam_tickets/data.old/
 /questions/**
 !/questions/**/
 !/questions/**/*_questions*.txt
+
+# Локальные настройки инструментов
+.claude/

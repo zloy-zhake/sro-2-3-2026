@@ -103,9 +103,9 @@ def test_docker_defaults_to_russian_and_is_not_disabled() -> None:
 
 def test_button_label_changes_after_first_ticket() -> None:
     at = pick(new_app())
-    assert at.button(key="generate").label == "Сформировать билет"
+    assert at.button(key="generate").label == "Сформировать задание"
     at = generate(at)
-    assert at.button(key="generate").label == "Сгенерировать другой билет"
+    assert at.button(key="generate").label == "Сгенерировать другое задание"
 
 
 def test_ticket_shows_three_questions_in_level_order() -> None:
@@ -146,7 +146,7 @@ def test_ticket_is_hidden_when_selection_changes(change: str) -> None:
         at.radio(key="stage").set_value("СРО-3").run()
     assert at.session_state["ticket"] is None
     # При смене языка вопросов интерфейс следует за ним, поэтому подпись казахская.
-    expected = "Билет құрастыру" if change == "qlang" else "Сформировать билет"
+    expected = "Тапсырма құрастыру" if change == "qlang" else "Сформировать задание"
     assert at.button(key="generate").label == expected
 
 
@@ -162,7 +162,7 @@ def test_ui_language_change_keeps_ticket_and_form() -> None:
     assert at.session_state["qlang"] == Lang.RU
     assert at.session_state["stage"] == "sro2"
     assert at.selectbox(key="subject").label == "Пән"
-    assert at.button(key="generate").label == "Басқа билет жасау"
+    assert at.button(key="generate").label == "Басқа тапсырма жасау"
 
 
 def test_ui_language_follows_question_language_until_manual_choice() -> None:

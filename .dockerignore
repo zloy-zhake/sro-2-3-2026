@@ -1,0 +1,13 @@
+# Образу не нужны исходные вопросы (данные уже в src/exam_tickets/data), тесты и документы
+questions/
+.venv/
+tests/
+.git/
+docs/
+.claude/
+**/__pycache__
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+**/data.new
+**/data.old

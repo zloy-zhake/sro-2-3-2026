@@ -5,15 +5,27 @@
 причина».
 """
 
+import argparse
 import logging
+import os
 import re
+import shutil
+import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
 from pydantic import ValidationError
 
-from exam_tickets.exceptions import ConversionError
+from exam_tickets.dataset import (
+    REGISTRY_FILE,
+    check_chapters,
+    find_id_mismatches,
+    load_registry,
+)
+from exam_tickets.exceptions import AppError, ConversionError, DataError
 from exam_tickets.models import (
     LEVEL_HEADINGS,
     LEVEL_LETTERS,
@@ -580,3 +592,305 @@ def parse_source(source: SourceFile) -> ChapterFile:
         language=source.language,
         file_chapter=source.file_chapter,
     )
+
+
+class _LiteralDumper(yaml.SafeDumper):
+    """Dumper, пишущий многострочные строки литеральным блоком ``|``.
+
+    Блочный скаляр хранит код и таблицы дословно и даёт читаемые диффы
+    (требования §3.1). Representer не знает имени поля, поэтому ``|`` выбирается
+    по наличию перевода строки: ключи однострочные и остаются обычными скалярами.
+    """
+
+
+def _represent_str(dumper: yaml.SafeDumper, data: str) -> yaml.ScalarNode:
+    """Выбирает стиль скаляра: ``|`` для многострочных строк.
+
+    Args:
+        dumper: Текущий dumper.
+        data: Записываемая строка.
+
+    Returns:
+        Узел YAML.
+    """
+    style = "|" if "\n" in data else None
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style=style)
+
+
+_LiteralDumper.add_representer(str, _represent_str)
+
+
+def dump_chapter(chapter: ChapterFile) -> str:
+    """Сериализует файл главы в YAML.
+
+    ``mode="json"`` нужен, потому что ``SafeDumper`` не знает ``StrEnum``.
+    ``width=inf`` отключает принудительный перенос строк.
+
+    Args:
+        chapter: Файл главы.
+
+    Returns:
+        Текст YAML, детерминированный для одинаковых входных данных.
+    """
+    return yaml.dump(
+        chapter.model_dump(mode="json"),
+        Dumper=_LiteralDumper,
+        allow_unicode=True,
+        sort_keys=False,
+        width=float("inf"),
+        default_flow_style=False,
+    )
+
+
+def chapter_relative_path(chapter: ChapterFile) -> Path:
+    """Возвращает путь YAML внутри ``data/``: ``<предмет>/chNN.<язык>.yaml``.
+
+    Args:
+        chapter: Файл главы.
+
+    Returns:
+        Относительный путь.
+    """
+    name = f"ch{chapter.file_chapter:02d}.{chapter.language.value}.yaml"
+    return Path(chapter.subject) / name
+
+
+def _verify_written(target: Path, chapters: list[ChapterFile]) -> None:
+    """Перечитывает записанный YAML и сверяет его с разобранными моделями.
+
+    Ловит ситуацию, когда PyYAML молча ушёл от ``|`` в кавычки или исказил
+    текст: round-trip обязан вернуть те же модели.
+
+    Args:
+        target: Каталог с записанным деревом.
+        chapters: Ожидаемые файлы глав.
+
+    Raises:
+        ConversionError: Если перечитанная модель не равна исходной.
+    """
+    for chapter in chapters:
+        path = target / chapter_relative_path(chapter)
+        reloaded = ChapterFile.model_validate(
+            yaml.safe_load(path.read_text(encoding="utf-8"))
+        )
+        if reloaded != chapter:
+            raise ConversionError(
+                file=str(path),
+                line=None,
+                reason="YAML не воспроизводит исходные тексты",
+            )
+
+
+def generate_tree(
+    questions_dir: Path, data_dir: Path, target: Path
+) -> list[ChapterFile]:
+    """Разбирает все исходники и записывает полное дерево данных в ``target``.
+
+    Args:
+        questions_dir: Каталог ``questions``.
+        data_dir: Текущий ``data/`` — откуда берутся реестр и ``subjects.yaml``.
+        target: Пустой каталог, куда пишется результат.
+
+    Returns:
+        Разобранные файлы глав.
+
+    Raises:
+        ConversionError: Ошибка разбора исходника.
+        DataError: Нарушение межфайловых правил §3.5.
+    """
+    registry = load_registry(root=data_dir)
+    sources = discover_sources(questions_dir=questions_dir, registry=registry)
+    chapters = [parse_source(source=source) for source in sources]
+    check_chapters(chapters=chapters, registry=registry)
+    for subject, number in find_id_mismatches(chapters=chapters):
+        logger.warning(
+            "Наборы ID языковых версий главы расходятся",
+            extra={"subject": subject, "chapter": number},
+        )
+    shutil.copyfile(data_dir / REGISTRY_FILE, target / REGISTRY_FILE)
+    for chapter in chapters:
+        path = target / chapter_relative_path(chapter)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(dump_chapter(chapter), encoding="utf-8")
+    _verify_written(target=target, chapters=chapters)
+    return chapters
+
+
+def _sibling(data_dir: Path, suffix: str) -> Path:
+    """Возвращает соседний с ``data_dir`` путь с суффиксом (``data.new``)."""
+    return data_dir.with_name(data_dir.name + suffix)
+
+
+def _recover(data_dir: Path) -> None:
+    """Восстанавливает состояние после прерванной замены каталога.
+
+    Если ``data/`` нет, а ``data.old/`` есть, процесс упал между двумя
+    переименованиями — возвращаем старые данные на место. Остатки ``data.new``
+    удаляются всегда, ``data.old`` — только при живом ``data/``.
+
+    Args:
+        data_dir: Каталог данных.
+    """
+    new, old = _sibling(data_dir, ".new"), _sibling(data_dir, ".old")
+    if not data_dir.exists() and old.exists():
+        os.replace(old, data_dir)
+        logger.warning("Восстановлен data/ после прерванной замены")
+    shutil.rmtree(new, ignore_errors=True)
+    if data_dir.exists():
+        shutil.rmtree(old, ignore_errors=True)
+
+
+def convert(questions_dir: Path, data_dir: Path) -> int:
+    """Атомарно перегенерирует ``data_dir`` из исходников.
+
+    Новое дерево собирается рядом (``data.new``, та же ФС), затем два
+    ``os.replace`` меняют каталоги. Остатки удалённых из реестра предметов
+    исчезают автоматически. До замены любая ошибка оставляет ``data/`` нетронутым.
+
+    Args:
+        questions_dir: Каталог ``questions``.
+        data_dir: Каталог данных.
+
+    Returns:
+        Число записанных файлов глав.
+    """
+    _recover(data_dir)
+    new, old = _sibling(data_dir, ".new"), _sibling(data_dir, ".old")
+    new.mkdir(parents=True)
+    try:
+        chapters = generate_tree(
+            questions_dir=questions_dir, data_dir=data_dir, target=new
+        )
+        os.replace(data_dir, old)
+        try:
+            os.replace(new, data_dir)
+        except OSError:
+            logger.error("Не удалось поставить новый data/, возвращаем старый")
+            os.replace(old, data_dir)
+            raise
+        shutil.rmtree(old)
+    finally:
+        shutil.rmtree(new, ignore_errors=True)
+    logger.info("Данные перегенерированы", extra={"files": len(chapters)})
+    return len(chapters)
+
+
+def _tree(root: Path) -> dict[str, bytes]:
+    """Читает все файлы дерева: относительный путь → байты."""
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in sorted(root.rglob(pattern="*"))
+        if path.is_file()
+    }
+
+
+def compare_trees(expected: Path, actual: Path) -> list[str]:
+    """Побайтно сравнивает два дерева.
+
+    Args:
+        expected: Свежесгенерированное дерево.
+        actual: Закоммиченный ``data/``.
+
+    Returns:
+        Описания расхождений (лишние, недостающие и отличающиеся файлы);
+        пустой список — деревья идентичны.
+    """
+    want, have = _tree(expected), _tree(actual)
+    problems = [f"отсутствует: {name}" for name in sorted(want.keys() - have.keys())]
+    problems += [f"лишний файл: {name}" for name in sorted(have.keys() - want.keys())]
+    problems += [
+        f"отличается: {name}"
+        for name in sorted(want.keys() & have.keys())
+        if want[name] != have[name]
+    ]
+    return problems
+
+
+def check(questions_dir: Path, data_dir: Path) -> list[str]:
+    """Проверяет, что ``data_dir`` соответствует исходникам (``make check-data``).
+
+    Streamlit Cloud конвертер не запускает, поэтому забытый ``make convert``
+    молча оставил бы в приложении устаревшие вопросы.
+
+    Args:
+        questions_dir: Каталог ``questions``.
+        data_dir: Каталог данных.
+
+    Returns:
+        Список расхождений; пустой — всё в порядке.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp)
+        generate_tree(questions_dir=questions_dir, data_dir=data_dir, target=target)
+        return compare_trees(expected=target, actual=data_dir)
+
+
+class _ExtraFormatter(logging.Formatter):
+    """Форматтер CLI, дописывающий поля ``extra`` к сообщению.
+
+    Сообщения статические (``CLAUDE.md``), а данные лежат в ``extra`` — в
+    консоли их иначе не видно.
+    """
+
+    _STANDARD = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Форматирует запись и добавляет нестандартные атрибуты.
+
+        Args:
+            record: Запись лога.
+
+        Returns:
+            Готовая строка.
+        """
+        text = super().format(record)
+        extra = {k: v for k, v in record.__dict__.items() if k not in self._STANDARD}
+        return f"{text} {extra}" if extra else text
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Точка входа CLI: ``python -m exam_tickets.convert``.
+
+    Args:
+        argv: Аргументы командной строки (по умолчанию ``sys.argv``).
+
+    Returns:
+        Код выхода: 0 — успех, 1 — ошибка данных или расхождение в ``--check``,
+        2 — непредвиденная ошибка.
+    """
+    parser = argparse.ArgumentParser(description="Конвертер questions/*.txt в YAML")
+    parser.add_argument("--check", action="store_true", help="только сверить data/")
+    parser.add_argument("--questions-dir", type=Path, required=True)
+    parser.add_argument("--data-dir", type=Path, required=True)
+    args = parser.parse_args(argv)
+
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(_ExtraFormatter("%(levelname)s %(message)s"))
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
+    try:
+        if args.check:
+            problems = check(questions_dir=args.questions_dir, data_dir=args.data_dir)
+            for problem in problems:
+                logger.error(
+                    "Расхождение data/ с исходниками", extra={"detail": problem}
+                )
+            if problems:
+                return 1
+            logger.info("data/ соответствует исходникам")
+            return 0
+        convert(questions_dir=args.questions_dir, data_dir=args.data_dir)
+    except (ConversionError, DataError) as e:
+        logger.error("Конвертация не удалась", extra={"error": str(e)})
+        return 1
+    except AppError:
+        logger.critical("Непредвиденная ошибка приложения", exc_info=True)
+        return 2
+    except Exception:
+        # Граница критичного пути (CLI): ничего не должно уйти молча.
+        logger.critical("Непредвиденная ошибка конвертера", exc_info=True)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

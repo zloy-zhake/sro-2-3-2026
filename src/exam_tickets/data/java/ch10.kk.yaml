@@ -1,0 +1,385 @@
+subject: java
+language: kk
+file_chapter: 10
+chapters:
+- 10
+chapter_titles:
+- Numbers Matter
+levels:
+  cognitive:
+    heading: КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+    points: 24
+    instructions: |
+      Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+    questions:
+    - id: J10-К-01
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Dukken {
+          static int sany;
+          static final int MAX_SANY = 50;
+          final int nomir;                             // 1-жол
+          int bagha = 7;
+
+          Dukken(int n) {
+            nomir = n;
+            sany++;
+          }
+
+          int baghaAl() {
+            return bagha;
+          }
+
+          static void esepte() {
+            System.out.println(sany + baghaAl());      // 2-жол
+          }
+
+          void ozgert(int jana) {
+            bagha = jana;
+            MAX_SANY = jana;                           // 3-жол
+          }
+
+          static int ulgai(final int k) {
+            k = k * 2;                                 // 4-жол
+            return k;
+          }
+        }
+
+        public class DukkenTest {
+          public static void main(String[] args) {
+            Dukken d = new Dukken(5);
+            d.ozgert(9);
+            Dukken.esepte();
+            System.out.println(d.ulgai(3));            // 5-жол
+          }
+        }
+
+        Әр тұжырымды басқаларынан бөлек қарастырыңыз: тұжырымда аталған жолдан басқа белгіленген жолдарда қате жоқ деп есептеңіз.
+
+        1. 1-жол компиляцияланбайды, себебі nomir — final дана айнымалысы (instance variable), ал оған жариялау кезінде мән берілмеген. (5 ұпай)
+        2. 2-жол компиляцияланбайды, себебі esepte() — статикалық әдіс (static method), ал ол baghaAl() дана әдісін (instance method) объектіге сілтемесіз шақыра алмайды. (5 ұпай)
+        3. 3-жол компиляцияланады, себебі ozgert() — дана әдісі, ал дана әдісі өз класының статикалық өрістерінің (static variable) мәнін өзгерте алады. (5 ұпай)
+        4. 4-жол компиляцияланбайды, себебі k параметрі final деп белгіленген, сондықтан әдіс ішінде оған жаңа мән беруге болмайды. (5 ұпай)
+        5. 5-жол компиляцияланбайды, себебі ulgai() — статикалық әдіс, ал статикалық әдісті тек класс атымен (Dukken.ulgai(3)) шақыруға болады. (4 ұпай)
+    - id: J10-К-02
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Kitap {
+          static final int MAX_BET;
+          final int bet;
+          final String avtor = "Abai";
+
+          static {
+            MAX_BET = 900;                             // 1-жол
+          }
+
+          Kitap(int b) {
+            bet = b;                                   // 2-жол
+          }
+
+          final void oqu() {
+            System.out.println(avtor + " " + bet + "/" + MAX_BET);
+          }
+
+          void jabu() {
+            System.out.println("kitap jabyldy");
+          }
+        }
+
+        final class Oqulyq extends Kitap {
+          Oqulyq() {
+            super(120);
+          }
+
+          void jabu() {                                // 3-жол
+            System.out.println("oqulyq jabyldy");
+          }
+        }
+
+        public class Kitaphana {
+          public static void main(String[] args) {
+            Oqulyq o = new Oqulyq();
+            o.oqu();
+            o.jabu();
+          }
+        }
+
+        1. static блогын (static initializer) өшіріп, 1-жолды (MAX_BET = 900;) Kitap конструкторына ауыстырсақ, код компиляцияланады, себебі final өріске конструкторда мән беруге болады. (5 ұпай)
+        2. 2-жолды конструктордан өшіріп, оның орнына oqu() әдісінің басына bet = 10; жолын жазсақ, код компиляцияланбайды, себебі final дана айнымалысына (instance variable) мән тек жариялау кезінде немесе конструкторда берілуі мүмкін. (5 ұпай)
+        3. Oqulyq класына void oqu() { System.out.println("oqulyq"); } әдісін қоссақ, код компиляцияланбайды, себебі Kitap класындағы oqu() — final әдіс, оны қайта анықтауға (overriding) болмайды. (5 ұпай)
+        4. 3-жол компиляцияланбайды, себебі Oqulyq — final класс, ал final кластың әдістері базалық кластың (superclass) әдістерін қайта анықтай алмайды. (5 ұпай)
+        5. Кодқа class Anyqtamalyq extends Oqulyq { } класын қоссақ, код компиляцияланбайды, себебі final класты кеңейтуге (extend), яғни одан туынды класс (subclass) жасауға болмайды. (4 ұпай)
+    - id: J10-К-03
+      text: |
+        Бағдарламаны оқыңыз.
+
+        import java.util.ArrayList;
+
+        public class Qorap {
+          private Integer sany;
+          private int salmaq;
+
+          public Integer ekiEse(int x) {
+            return x * 2;                              // 1-жол
+          }
+
+          public void qos(Integer a) {
+            salmaq = salmaq + a;
+          }
+
+          public void go() {
+            ArrayList<Integer> tizim = new ArrayList<Integer>();
+            tizim.add(salmaq);
+            qos(7);                                    // 2-жол
+            Integer k = ekiEse(salmaq);
+            k++;                                       // 3-жол
+            System.out.println(salmaq + " " + k + " " + tizim.get(0));
+            salmaq = sany;                             // 4-жол
+            System.out.println(salmaq);
+          }
+
+          public static void main(String[] args) {
+            Qorap q = new Qorap();
+            q.go();
+          }
+        }
+
+        1. Код компиляцияланады, бірақ 4-жолда бағдарлама NullPointerException-мен құлайды, себебі sany — Integer типті өріс, оның әдепкі мәні null, ал null мәнін int-ке айналдыру мүмкін емес. (5 ұпай)
+        2. 1-жол компиляцияланбайды, себебі ekiEse() әдісі Integer қайтаруы керек, ал x * 2 өрнегі int типті. (5 ұпай)
+        3. 3-жол компиляцияланбайды, себебі ++ операторы тек примитив типтерге қолданылады, ал k — Integer объектісіне сілтеме. (5 ұпай)
+        4. 2-жол компиляцияланады, себебі qos() әдісінің параметрі Integer болса да, оған int мәнін беруге болады: компилятор 7-ні Integer объектісіне автоматты түрде орайды (autoboxing). (5 ұпай)
+        5. Екі жердегі ArrayList<Integer> жазуын ArrayList<int> деп өзгертсек, код компиляцияланады, себебі ArrayList-ке int мәндерін салуға болады. (4 ұпай)
+  functional:
+    heading: ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+    points: 32
+    instructions: |
+      Бағдарламаның орындалуын қадамдап бақылаңыз (trace). Кестенің әр жолы — бір оператор (statement). Әр жол орындалғаннан КЕЙІНГІ толық жағдайды жазыңыз: «Стек» бағанына — стектегі (stack) барлық фреймдерді және олардағы айнымалыларды, «Үйінді және статикалық өрістер» бағанына — үйіндідегі (heap) барлық объектілерді және статикалық өрістерді. Әр жол — 4 ұпай (2 + 2).
+      Белгілеулер:
+      - сілтеме (reference) — a→1; бос сілтеме — b=null;
+      - үйіндідегі объект — 1 Alma объекті (salmaq=0);
+      - бірде-бір сілтеме арқылы жетуге болмайтын объект — «— GC кандидаты»;
+      - стекте фреймдер жоғарыдан төмен жазылады, ең үстінде — қазір орындалып жатқан әдіс немесе конструктор: tekser(): b=7 / main(): o→1; айнымалысы жоқ фрейм — getJas(): —;
+      - конструктордың (constructor) фреймі — Alma(): s=5 (this жазылмайды); Object() конструкторы жазылмайды;
+      - «(… ішінде)» — шақырылған әдістің немесе конструктордың денесіндегі оператор (return операторы да жеке жол); қайта жүктелген (overloaded) конструкторлар параметрлерімен ажыратылады: (Alma() ішінде), (Alma(int s) ішінде);
+      - super(…) және this(…) шақырулары жеке жол болып жазылмайды — тек конструкторлар денесіндегі операторлар жазылады;
+      - туынды класс (subclass) объектісінің өрістерін жазғанда базалық кластың (superclass) өрістері бірінші жазылады; әлі мән берілмеген өріс — 0 немесе null;
+      - «(қайтқаннан кейін)» — әдіс (немесе конструктор) аяқталып, оның нәтижесі айнымалыға меншіктелгеннен кейінгі жағдай (оның фреймі бұл кезде стекте жоқ);
+      - void әдісті шақыру жеке жол болып жазылмайды — тек оның денесіндегі операторлар жазылады;
+      - static блогының (static initializer) фреймі — Ata static блогы: —; ол класты жүктеуді тудырған фреймнің үстіне жазылады.
+      Үшінші бағанда алдымен үйіндідегі объектілерді жазыңыз (1 Qus объекті (salmaq=3)), содан кейін «; » белгісінен соң статикалық өрістер блогын: «Статикалық өрістер: Qus.sany=2». Статикалық өріс (static variable) объектінің ішіне жазылмайды — ол класқа тиесілі және бір данада болады. Класс алғаш қолданылғанда (new, статикалық әдіс не өріс) оның статикалық өрістері блокқа қосылады; static блогының жолдары «(Ata static блогы ішінде)» деп белгіленеді.
+    questions:
+    - id: J10-Ф-01
+      text: |
+        class Ata {
+          static int sany;
+          int jas;
+
+          static {
+            sany = 3;
+          }
+
+          Ata(int j) {
+            jas = j;
+            sany = sany + 1;
+          }
+        }
+
+        class Bala extends Ata {
+          static int kod;
+          int boy;
+
+          static {
+            kod = Ata.sany * 2;
+          }
+
+          Bala(int b) {
+            super(b + 1);
+            boy = b * kod;
+            kod = kod + 1;
+          }
+        }
+
+        public class Uy {
+          public static void main(String[] args) {
+            Bala b = new Bala(2);
+            Ata a = new Ata(5);
+          }
+        }
+
+        Нұсқау: кесте main-дағы new Bala(2) шақыруынан басталады; 1-жол — осы шақыру кезінде бірінші орындалатын оператор. 8-жол — бүкіл оператор (конструктордың денесін қоса), кестеге оның орындалуынан кейінгі жағдай жазылады.
+
+        | № | Код                                              | Стек | Үйінді және статикалық өрістер |
+        |---|--------------------------------------------------|------|--------------------------------|
+        | 1 | (Ata static блогы ішінде) sany = 3;              |      |                                |
+        | 2 | (Bala static блогы ішінде) kod = Ata.sany * 2;   |      |                                |
+        | 3 | (Ata(…) ішінде) jas = j;                         |      |                                |
+        | 4 | (Ata(…) ішінде) sany = sany + 1;                 |      |                                |
+        | 5 | (Bala(…) ішінде) boy = b * kod;                  |      |                                |
+        | 6 | (Bala(…) ішінде) kod = kod + 1;                  |      |                                |
+        | 7 | Bala b = new Bala(2); (қайтқаннан кейін)         |      |                                |
+        | 8 | Ata a = new Ata(5);                              |      |                                |
+    - id: J10-Ф-02
+      text: |
+        class Qus {
+          int salmaq;
+          static int sany;
+
+          Qus(int s) {
+            salmaq = s;
+            sany++;
+          }
+        }
+
+        public class Kol {
+          public static void main(String[] args) {
+            Qus q1 = new Qus(3);
+            Qus q2 = new Qus(5);
+            int k = q1.sany;
+            q1 = q2;
+            Qus q3 = new Qus(q1.salmaq + 1);
+            k = q1.sany + q3.sany;
+          }
+        }
+
+        Нұсқау: 1-жол және 7-жол — бүкіл оператор (конструктордың денесін қоса), кестеге оның орындалуынан кейінгі жағдай жазылады; 2–4-жолдар — new Qus(5) шақыруы қадамдап.
+
+        | № | Код                                          | Стек | Үйінді және статикалық өрістер |
+        |---|----------------------------------------------|------|--------------------------------|
+        | 1 | Qus q1 = new Qus(3);                         |      |                                |
+        | 2 | (Qus(…) ішінде) salmaq = s;                  |      |                                |
+        | 3 | (Qus(…) ішінде) sany++;                      |      |                                |
+        | 4 | Qus q2 = new Qus(5); (қайтқаннан кейін)      |      |                                |
+        | 5 | int k = q1.sany;                             |      |                                |
+        | 6 | q1 = q2;                                     |      |                                |
+        | 7 | Qus q3 = new Qus(q1.salmaq + 1);             |      |                                |
+        | 8 | k = q1.sany + q3.sany;                       |      |                                |
+    - id: J10-Ф-03
+      text: |
+        class Oiynshy {
+          static int sany;
+          static Oiynshy songy;
+          int nomer;
+
+          Oiynshy() {
+            nomer = ++sany;
+            songy = this;
+          }
+        }
+
+        public class Oiyn {
+          public static void main(String[] args) {
+            int bas = Oiynshy.sany;
+            Oiynshy o = new Oiynshy();
+            o = new Oiynshy();
+            o = null;
+            int k = Oiynshy.songy.nomer;
+            Oiynshy.songy = null;
+          }
+        }
+
+        Нұсқау: 2–3-жолдар — бірінші new Oiynshy() шақыруы қадамдап; 5-жол — бүкіл оператор (конструктордың денесін қоса), кестеге оның орындалуынан кейінгі жағдай жазылады.
+
+        | № | Код                                           | Стек | Үйінді және статикалық өрістер |
+        |---|-----------------------------------------------|------|--------------------------------|
+        | 1 | int bas = Oiynshy.sany;                       |      |                                |
+        | 2 | (Oiynshy() ішінде) nomer = ++sany;            |      |                                |
+        | 3 | (Oiynshy() ішінде) songy = this;              |      |                                |
+        | 4 | Oiynshy o = new Oiynshy(); (қайтқаннан кейін) |      |                                |
+        | 5 | o = new Oiynshy();                            |      |                                |
+        | 6 | o = null;                                     |      |                                |
+        | 7 | int k = Oiynshy.songy.nomer;                  |      |                                |
+        | 8 | Oiynshy.songy = null;                         |      |                                |
+  systemic:
+    heading: ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+    points: 44
+    instructions: |
+      Кодтағы ? белгісінің орнына қойылатын мән (сан, жол (String) немесе жасалатын объектілер саны) — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+      1. кіріс мәні — әр ? орнына қандай мән қойылады;
+      2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек немесе қандай ерекше жағдаймен (exception) құлауы керек;
+      3. тест нені тексереді — if-тің қай тармағы орындалады, қай шекара (boundary) тексеріледі, Math әдісі немесе талдау (parse) әдісі осы мәнмен не қайтарады, статикалық өріс (static variable) пен дана айнымалысы (instance variable) қалай өзгереді.
+
+      Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+    questions:
+    - id: J10-С-01
+      text: |
+        class Baga {                       // баға (grade)
+          static int tuzet(float x) {      // статикалық әдіс (static method)
+            int b = Math.round(x);         // ең жақын бүтін санға дөңгелектеу
+            int t = Math.min(Math.max(b, 0), 100);  // [0; 100] аралығына шектеу
+            if (t != b) {
+              System.out.println("shekteldi: " + b + " -> " + t);
+            }
+            return t;
+          }
+        }
+
+        public class BagaTest {
+          public static void main(String[] args) {
+            float x = ?;                   // тест кірісі: бөлшек сан (F әрпімен)
+            int b = Baga.tuzet(x);
+            System.out.println("baga = " + b);
+          }
+        }
+
+        Талап: ? орнына F әрпімен жазылған бөлшек сан (float) қойылады, мысалы 12.3F. tuzet әдісі алдымен x-ті ең жақын бүтін санға дөңгелектейді; бөлшек бөлігі дәл 0.5 болса, сан нөлден алыс жаққа (модулі бойынша үлкенге қарай) дөңгелектенеді. Баға 0-ден 100-ге дейінгі аралықта (екі шегі де кіреді) болуы керек: дөңгелектенген баға 0-ден кіші болса — 0, 100-ден үлкен болса — 100 болады, және бұл жағдайда «shekteldi: Б -> Ш» жолы шығады (Б — дөңгелектенген баға, Ш — шектелген баға). Баға аралықта болса, бұл жол шықпайды. Соңында «baga = …» жолы шығады.
+    - id: J10-С-02
+      text: |
+        class Baptau {                     // баптау (setting)
+          static void ornat(String dengei, String qosuly) {
+            int d = Integer.parseInt(dengei);          // жолды int-ке талдау (parse)
+            boolean q = Boolean.parseBoolean(qosuly);  // жолды boolean-ға талдау
+            if (!q) {
+              System.out.println("dybys oshik");
+            } else if (d >= 1 && d <= 10) {
+              System.out.println("dybys: " + d);
+            } else {
+              System.out.println("qate dengei: " + d);
+            }
+          }
+        }
+
+        public class BaptauTest {
+          public static void main(String[] args) {
+            String dengei = ?;             // тест кірісі: дыбыс деңгейі (жол)
+            String qosuly = ?;             // тест кірісі: дыбыс қосулы ма (жол)
+            Baptau.ornat(dengei, qosuly);
+          }
+        }
+
+        Талап: екі ? орнына тырнақшадағы жол (String) литералдары қойылады (null емес): dengei — дыбыс деңгейі, qosuly — дыбыс қосулы ма. dengei бүтін сан түрінде жазылуы керек; олай болмаса (мысалы, әріптер), бағдарлама NumberFormatException ерекше жағдайымен (exception) құлайды. qosuly мәні "true" (бас не кіші әріппен: TRUE, True да болады), "1" немесе "иә" болса — дыбыс қосулы; басқа кез келген мән — өшік. Дыбыс өшік болса, «dybys oshik» шығады. Қосулы болса: деңгей 1-ден 10-ға дейін (екі шегі де кіреді) болса — «dybys: D», әйтпесе — «qate dengei: D» (D — деңгей).
+    - id: J10-С-03
+      text: |
+        class Oryn {                       // орын (seat)
+          static final int SHEK = 3;       // тұрақты (constant): орындар шегі
+          int sany = 0;                    // жасалған Oryn объектілерінің саны
+          boolean ruqsat;                  // орынға рұқсат бар ма
+
+          Oryn() {
+            sany++;
+            ruqsat = boluMumkin(sany);
+          }
+
+          static boolean boluMumkin(int s) {  // статикалық әдіс (static method)
+            return s <= SHEK;
+          }
+        }
+
+        public class OrynTest {
+          public static void main(String[] args) {
+            int n = ?;                     // тест кірісі: жасалатын Oryn объектілерінің саны
+            int qabyl = 0;
+            for (int i = 1; i <= n; i++) {
+              Oryn o = new Oryn();
+              if (o.ruqsat) {
+                qabyl++;
+              } else {
+                System.out.println(i + "-oryn: shek tolyp qaldy");
+              }
+            }
+            System.out.println("qabyldandy: " + qabyl);
+          }
+        }
+
+        Талап: ? орнына бүтін сан n ≥ 0 қойылады — main ішінде жасалатын Oryn объектілерінің саны. Барлығы SHEK = 3 орын бар: бағдарлама басталғаннан бері жасалған алғашқы 3 Oryn объектісі орын алады (ruqsat = true), одан кейінгі әрбір объект орын алмайды (ruqsat = false). Орын алмаған әр объект үшін «i-oryn: shek tolyp qaldy» жолы шығады (i — объектінің реттік нөмірі, 1-ден басталады). Соңында «qabyldandy: K» жолы шығады — орын алған объектілер саны.

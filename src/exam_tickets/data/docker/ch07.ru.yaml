@@ -1,0 +1,714 @@
+subject: docker
+language: ru
+file_chapter: 7
+chapters:
+- 7
+chapter_titles:
+- Running multi-container apps with Docker Compose
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      Инструкция для студента.
+      К каждому вопросу дан фрагмент: файл Docker Compose (docker-compose.yml),
+      описание образов и исходного состояния, команды Docker и Docker Compose.
+      После фрагмента даны 5 утверждений об этом фрагменте. Все команды
+      выполняются на компьютере с Linux; Docker Compose встроен в Docker CLI
+      (команда docker compose). Образы, указанные во фрагменте, уже есть на
+      компьютере.
+      Правило современной версии Docker Compose, которое нужно учитывать
+      (в книге на с. 101 сказано, что имя сервиса становится именем
+      контейнера, — сейчас это не так): контейнер сервиса получает имя
+      <имя проекта>-<имя сервиса>-<номер>, например
+      image-of-the-day-iotd-1. Имя проекта по умолчанию — имя каталога, в
+      котором лежит compose-файл. Имя сервиса при этом остаётся DNS-именем
+      в сети приложения.
+      Для каждого утверждения напишите «верно» или «неверно» и обоснуйте ответ:
+      какое правило Docker или Docker Compose здесь действует и что именно во
+      фрагменте это показывает. Для неверного утверждения скажите, как обстоит
+      дело на самом деле.
+      Оценка: утверждения 1–4 — по 5 баллов (1 балл за «верно/неверно»,
+      4 балла за обоснование); утверждение 5 — 4 балла (1 + 3).
+      Ответ «верно/неверно» без обоснования оценивается только 1 баллом.
+      Итого за вопрос — 24 балла.
+    questions:
+    - id: D07-К-01
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Образ kz/quotes-web:v1 содержит веб-
+        приложение на Python (Flask): оно слушает порт 5000 и на запрос /
+        отвечает строкой quote of the day. Сети (network) school-net на
+        компьютере ещё нет. Каталог /home/student/quotes содержит один файл —
+        docker-compose.yml:
+
+        services:
+
+          quotes-web:
+            image: kz/quotes-web:v1
+            ports:
+              - "8090:5000"
+            networks:
+              - front
+
+        networks:
+          front:
+            name: school-net
+            external: true
+
+        В терминале хоста по порядку выполнены команды:
+        > cd /home/student/quotes
+        > docker network create school-net
+        > docker compose up -d
+
+        Все команды выполнены успешно, контейнер работает (Up). Каждое
+        утверждение рассматривайте отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. Если бы команда docker network create school-net не была выполнена,
+           команда docker compose up -d завершилась бы ошибкой и контейнер не
+           был бы создан: сеть, помеченную external: true, Compose сам не
+           создаёт.                                                       (5 баллов)
+        2. Compose назвал контейнер сервиса quotes-web, поэтому журнал
+           приложения можно посмотреть командой
+           docker container logs quotes-web.                              (5 баллов)
+        3. Команда docker compose down удалит контейнер сервиса quotes-web и
+           сеть school-net, поэтому перед следующим docker compose up -d сеть
+           нужно снова создать командой docker network create.            (5 баллов)
+        4. В браузере на хосте приложение открывается по адресу
+           http://localhost:8090: Docker передаёт запросы с порта 8090 хоста
+           на порт 5000 контейнера, который слушает приложение.           (5 баллов)
+        5. Если запустить приложение командой docker compose up без флага -d
+           (--detach), Compose запустит контейнер в фоне и сразу вернёт
+           терминал; журналы приложения можно будет увидеть только командой
+           docker compose logs.                                            (4 балла)
+    - id: D07-К-02
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Приложение курсов валют из трёх сервисов
+        (service):
+        - образ kz/collector:v1 — сборщик журналов, портов не публикует;
+        - образ kz/rates-api:v1 — REST API курсов, слушает порт 5000; после
+          запуска контейнера оно ещё 10 секунд загружает курсы и только потом
+          начинает принимать запросы;
+        - образ kz/portal:v1 — сайт, слушает порт 8080; при запуске один раз
+          запрашивает курсы по адресу http://rates-api:5000/rates; если запрос
+          не удался, сайт показывает rates: none и запрос больше не повторяет.
+
+        Каталог /home/student/rates содержит файл docker-compose.yml:
+
+        services:
+
+          collector:
+            image: kz/collector:v1
+
+          rates-api:
+            image: kz/rates-api:v1
+            ports:
+              - "5000"
+
+          portal:
+            image: kz/portal:v1
+            ports:
+              - "8015:8080"
+            depends_on:
+              - collector
+              - rates-api
+
+        Контейнеров этого приложения на компьютере ещё нет. В терминале хоста,
+        в каталоге /home/student/rates, по порядку выполнены команды (все
+        выполнены успешно):
+        > docker compose up -d
+        > docker compose up -d --scale rates-api=3
+        > docker compose stop
+        > docker compose start
+
+        Утверждение 1 относится к первой команде. Утверждения 2–5
+        рассматривайте отдельно, начиная с состояния после последней команды.
+
+        Задание. Верно или неверно и почему?
+        1. После первой команды docker compose up -d сайт portal покажет
+           курсы, а не rates: none: из-за depends_on Compose запускает
+           контейнер portal только тогда, когда rates-api уже отвечает на
+           запросы.                                                       (5 баллов)
+        2. Порт 5000 каждого контейнера rates-api опубликован на случайном
+           порту хоста, у каждого из трёх контейнеров — свой; номера портов
+           видны в выводе docker container ls.                            (5 баллов)
+        3. Если теперь выполнить docker compose up -d (без --scale), у сервиса
+           rates-api останутся три контейнера: up только создаёт недостающие
+           контейнеры и не трогает работающие.                            (5 баллов)
+        4. После docker compose stop и docker compose start работают те же
+           5 контейнеров, что были созданы раньше (в docker container ls они
+           созданы давно, а запущены недавно): stop только останавливает
+           контейнеры, а start снова запускает их.                        (5 баллов)
+        5. Если удалить контейнер командой
+           docker container rm -f rates-collector-1, Compose сам его не
+           восстановит: новый контейнер сервиса collector появится только
+           после следующей команды docker compose up -d.                   (4 балла)
+    - id: D07-К-03
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Приложение заметок из двух сервисов
+        (service):
+        - образ kz/notes-store:v1 — хранилище заметок (Flask), слушает порт
+          6000 и хранит заметки в файле /data/notes.txt внутри контейнера
+          (томов и монтирований нет);
+        - образ kz/notes-web:v1 — сайт (Flask), слушает порт 8080; адрес
+          хранилища берёт из переменной окружения STORE_URL, режим работы — из
+          переменной DB_PROVIDER, ключ API читает из файла
+          /app/secret/key.json.
+
+        Каталог /home/student/notes содержит файл docker-compose.yml и файл
+        config/key.json (ключ API):
+
+        services:
+
+          notes-store:
+            image: kz/notes-store:v1
+            ports:
+              - "6433:6000"
+
+          notes-web:
+            image: kz/notes-web:v1
+            ports:
+              - "8030:8080"
+            environment:
+              - STORE_URL=http://notes-store:6000
+              - DB_PROVIDER=remote
+            depends_on:
+              - notes-store
+            secrets:
+              - source: api-key
+                target: /app/secret/key.json
+
+        secrets:
+          api-key:
+            file: ./config/key.json
+
+        В терминале хоста, в каталоге /home/student/notes, выполнена команда
+        docker compose up -d (успешно, оба контейнера Up). Затем через сайт
+        http://localhost:8030 добавлены две заметки, сайт показывает notes=2.
+        Каждое утверждение рассматривайте отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. В контейнере notes-web есть файл /app/secret/key.json с содержимым
+           файла config/key.json хоста: на одном компьютере без кластера
+           Compose берёт секрет (secret) из файла хоста и показывает его в
+           контейнере, по сути как монтирование (bind mount).             (5 баллов)
+        2. Сайт notes-web должен обращаться к хранилищу по адресу
+           http://notes-store:6433, потому что 6433 — опубликованный порт;
+           адрес из STORE_URL с портом 6000 работать не будет.            (5 баллов)
+        3. Имя notes-store из STORE_URL встроенный DNS Docker преобразует в
+           IP-адрес контейнера сервиса notes-store; если этот контейнер
+           удалить и снова создать командой docker compose up -d (у нового
+           контейнера может быть другой IP-адрес), STORE_URL менять не нужно.
+                                                                          (5 баллов)
+        4. После docker compose down и docker compose up -d обе заметки
+           сохранятся: down только останавливает контейнеры, как stop,
+           поэтому файл /data/notes.txt останется.                        (5 баллов)
+        5. Тот же образ kz/notes-web:v1 можно запустить в тестовой среде с
+           другим compose-файлом (другой порт хоста, DB_PROVIDER=local, другой
+           файл ключа) без пересборки образа: эти настройки задаются при
+           запуске, а не хранятся в образе.                                (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Инструкция студенту. Даны compose-файл, исходное состояние и
+      последовательность из 8 команд или событий. Они выполняются строго по
+      порядку, каждая — после завершения предыдущей, в Linux, из каталога
+      проекта (каталог с compose.yaml; его имя указано в условии). Первый
+      столбец таблицы заполнен. Заполните два других столбца для каждой строки:
+        - «Состояние сервисов» — какие контейнеры (containers) проекта
+          существуют и в каком статусе, какие сети (networks) и тома (volumes)
+          есть, что лежит в томе (для файла, в который приложение дописывает
+          строки, — число строк);
+        - «Результат или действие Compose» — что делает Compose с каждым
+          контейнером (создаёт, запускает, оставляет работать, пересоздаёт,
+          останавливает, удаляет) и в каком порядке, что ответит приложение
+          (строки ответа даны в условии — запишите их со значениями) или
+          результат DNS-запроса, ошибка — словами.
+      Нотация:
+        - контейнер: `gallery-web-1: Up` / `gallery-web-1: Exited` /
+          `gallery-web-1: удалён`;
+        - действие Compose: Created (создан), Started (запущен), Running (уже
+          работает — ничего не делается), Recreated (пересоздан), Stopped
+          (остановлен), Removed (удалён);
+        - сеть: `gallery_default: есть`; том: `todo_todo-data: [items.txt
+          (2 строки)]`;
+        - DNS-запрос: «1 IP-адрес» / «3 IP-адреса» / «имя не найдено» (сами
+          IP-адреса, ID, время, номера случайных портов и точный текст сообщений
+          писать не нужно — пишите «случайный порт хоста»).
+      Если состояние не изменилось, напишите «без изменений» и что именно
+      осталось.
+
+      Справка — правила Docker Compose v5, которых нет в главе 7 или которые в
+      книге описаны иначе:
+        1. Имя проекта (project name) — имя каталога проекта. Контейнеры
+           называются <проект>-<сервис>-<номер>: например, gallery-web-1 (в
+           книге на с. 101 сказано, что имя сервиса становится именем
+           контейнера, — в Compose v5 это не так). Сеть по умолчанию
+           называется <проект>_default, именованный том — <проект>_<том>.
+        2. Сеть с `external: true` Compose не создаёт и не удаляет: она должна
+           существовать заранее.
+        3. depends_on задаёт только порядок: зависимый сервис запускается после
+           того, как запущены (не «готовы») сервисы, от которых он зависит.
+        4. Именованные тома объявляются в разделе верхнего уровня volumes и
+           подключаются к сервису как `имя_тома:/путь`. docker compose down
+           удаляет контейнеры и созданные Compose сети, но НЕ удаляет
+           именованные тома (в книге на с. 107 сказано иначе);
+           docker compose down -v удаляет и их.
+        5. Секрет (secret) с `file:` на одной машине — это файл хоста,
+           подключённый в контейнер по пути target только для чтения.
+        6. Приложения в этих образах не обрабатывают сигнал остановки, поэтому
+           stop/down ждёт 10 секунд и завершает их принудительно; статус после
+           остановки — Exited (137). Достаточно писать «Exited».
+
+      Оценка: 8 строк по 4 балла (2 балла — столбец состояния, 2 балла — столбец
+      результата). Итого 32 балла. Ответ поясните устно.
+    questions:
+    - id: D07-Ф-01
+      text: |
+        Исходное состояние:
+        - каталог проекта называется gallery, в нём файл compose.yaml (ниже);
+        - в локальном кэше есть образы gallery/web:v1, gallery/api:v1,
+          gallery/log:v1; каждый — веб-сервис, который слушает порт 8080
+          контейнера и работает, пока его не остановят;
+        - контейнеров и сетей проекта нет.
+
+        Файл compose.yaml:
+        services:
+          log:
+            image: gallery/log:v1
+
+          api:
+            image: gallery/api:v1
+            ports:
+              - "8080"
+
+          web:
+            image: gallery/web:v1
+            ports:
+              - "8040:8080"
+            depends_on:
+              - api
+              - log
+
+        Задание: заполните таблицу (команды — в первом столбце).
+
+        | № | Команда или событие                   | Состояние сервисов | Результат или действие Compose |
+        |---|---------------------------------------|--------------------|--------------------------------|
+        | 1 | docker compose up -d                  |                    |                                |
+        | 2 | docker compose up -d --scale api=3    |                    |                                |
+        | 3 | docker compose up -d                  |                    |                                |
+        | 4 | docker compose stop                   |                    |                                |
+        | 5 | docker container rm -f gallery-log-1  |                    |                                |
+        | 6 | docker compose start                  |                    |                                |
+        | 7 | docker compose up -d                  |                    |                                |
+        | 8 | docker compose down                   |                    |                                |
+
+        Баллы: 8 строк × 4 = 32.
+    - id: D07-Ф-02
+      text: |
+        Исходное состояние:
+        - каталог проекта называется shop, в нём файл compose.yaml (ниже);
+        - в локальном кэше есть образы shop/front:v1, shop/cart:v1,
+          shop/audit:v1; каждый — веб-сервис, который слушает порт 8080
+          контейнера и работает, пока его не остановят;
+        - контейнеров и сетей проекта нет.
+        - «DNS-запрос из front: имя» — внутри контейнера shop-front-1
+          выполняется поиск IP-адресов по этому имени (как nslookup в книге).
+
+        Файл compose.yaml:
+        services:
+          front:
+            image: shop/front:v1
+            ports:
+              - "8050:8080"
+            depends_on:
+              - cart
+              - audit
+
+          cart:
+            image: shop/cart:v1
+
+          audit:
+            image: shop/audit:v1
+
+        Задание: заполните таблицу (команды и события — в первом столбце).
+
+        | № | Команда или событие                                  | Состояние сервисов | Результат или действие Compose |
+        |---|------------------------------------------------------|--------------------|--------------------------------|
+        | 1 | docker compose up -d                                 |                    |                                |
+        | 2 | DNS-запрос из front: cart                            |                    |                                |
+        | 3 | docker compose up -d --scale cart=3                  |                    |                                |
+        | 4 | DNS-запрос из front: cart (два раза подряд)          |                    |                                |
+        | 5 | docker container rm -f shop-audit-1                  |                    |                                |
+        | 6 | DNS-запрос из front: audit                           |                    |                                |
+        | 7 | docker compose up -d                                 |                    |                                |
+        | 8 | DNS-запрос из front: cart, затем shop-cart-3         |                    |                                |
+
+        Баллы: 8 строк × 4 = 32.
+    - id: D07-Ф-03
+      text: |
+        Исходное состояние:
+        - каталог проекта называется todo, в нём файл compose.yaml (ниже) и
+          файл ./config/api-key.txt с содержимым k1;
+        - сеть todo-net уже создана (docker network create todo-net);
+        - в локальном кэше есть образы:
+          todo/store:v1 — сервис хранения на порту 6000: запрос /add дописывает
+          строку в файл /data/items.txt и отвечает «items: N» (N — число строк
+          в файле); запрос /count отвечает числом строк (0, если файла нет);
+          todo/web:v1 — веб-сервис на порту 8080: запрос / отвечает
+          «mode: M, key: K, items: N», где M — значение переменной DB_MODE,
+          K — содержимое файла /app/secret/key.txt, N — ответ на запрос
+          STORE_URL + "/count";
+        - контейнеров и томов проекта нет.
+
+        Файл compose.yaml:
+        services:
+          todo-store:
+            image: todo/store:v1
+            ports:
+              - "8061:6000"
+            volumes:
+              - todo-data:/data
+            networks:
+              - app-net
+
+          todo-web:
+            image: todo/web:v1
+            ports:
+              - "8060:8080"
+            environment:
+              - DB_MODE=test
+              - STORE_URL=http://todo-store:6000
+            depends_on:
+              - todo-store
+            networks:
+              - app-net
+            secrets:
+              - source: api-key
+                target: /app/secret/key.txt
+
+        networks:
+          app-net:
+            name: todo-net
+            external: true
+
+        volumes:
+          todo-data:
+
+        secrets:
+          api-key:
+            file: ./config/api-key.txt
+
+        Задание: заполните таблицу (команды и события — в первом столбце).
+
+        | № | Команда или событие                                              | Состояние сервисов | Результат или действие Compose |
+        |---|------------------------------------------------------------------|--------------------|--------------------------------|
+        | 1 | docker compose up -d                                             |                    |                                |
+        | 2 | в браузере два раза открыть http://localhost:8061/add            |                    |                                |
+        | 3 | в compose.yaml заменить DB_MODE=test на DB_MODE=prod;            |                    |                                |
+        |   | docker compose up -d                                             |                    |                                |
+        | 4 | в браузере открыть http://localhost:8060/                        |                    |                                |
+        | 5 | docker compose down                                              |                    |                                |
+        | 6 | docker compose up -d; затем открыть http://localhost:8061/add    |                    |                                |
+        | 7 | docker compose down -v                                           |                    |                                |
+        | 8 | docker compose up -d; затем открыть http://localhost:8060/       |                    |                                |
+
+        Баллы: 8 строк × 4 = 32.
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Глава 7. Сценарии проверки.
+
+      Инструкция. В каждом вопросе дан фрагмент — файл Docker Compose
+      (compose.yaml), файлы приложения и описание исходного состояния: какие
+      образы (images) собраны, какие сети (networks), контейнеры и файлы уже
+      есть. Придумайте 4 сценария проверки (как тест-кейсы) и запишите их в
+      таблицу:
+
+      | № | Исходное условие или действие | Ожидаемый результат | Что проверяет сценарий |
+      |---|-------------------------------|---------------------|------------------------|
+
+      - Исходное условие или действие — что именно вы делаете или задаёте:
+        какие команды docker compose / docker и в каком порядке выполняются,
+        что изменено перед ними (строка compose.yaml, значение переменной
+        окружения (environment), файл на хосте), какой сервис остановлен или
+        удалён, какой запрос отправлен приложению.
+      - Ожидаемый результат — что покажет Docker или приложение: создаются ли
+        контейнеры, их статус (Up / Exited / Restarting / не созданы), что
+        выводит Compose (ошибка и её род), что отвечает приложение (например,
+        entries=2, categories=3, ответа нет), что появилось в каталоге хоста.
+      - Что проверяет сценарий — какое правило Docker / Docker Compose или
+        какое утверждение из задания подтверждается или опровергается.
+      Сценарии должны давать разные исходы. ID, IP-адреса, номера случайных
+      портов, время и точный текст сообщений не нужны: результат достаточно
+      описать словами (например: «контейнер web: Exited (1)», «ошибка: сеть не
+      найдена», «соединение сброшено, ответа нет», «ответ entries=0»).
+
+      Справка (правила Docker, которые нужны для ответа):
+      - Имя проекта Compose по умолчанию — имя каталога, где лежит compose.yaml.
+        Контейнеры называются <проект>-<сервис>-<номер>, например
+        shop-cart-1. Другие контейнеры сети находят контейнер по имени сервиса
+        (cart).
+      - Секрет (secrets) с file: на одной машине (без кластера) — это файл хоста,
+        подключённый в контейнер по пути target только для чтения.
+      - restart: always — Docker сам запускает контейнер заново, когда его
+        процесс завершился (в том числе с ошибкой), а также после перезапуска
+        Docker Engine. Контейнер, остановленный командой stop, до перезапуска
+        Docker Engine заново не запускается.
+      - Приложения во фрагментах останавливаются командой stop около 10 секунд;
+        код выхода после stop (Exited (…)) указывать не нужно.
+
+      Оценка: 4 сценария по 8 баллов (исходное условие — 2, ожидаемый результат — 3,
+      что проверяет — 3) = 32 балла + защита сценариев у экзаменатора — 12 баллов.
+      Итого 44 балла.
+    questions:
+    - id: D07-С-01
+      text: |
+        Фрагмент. Веб-сервис отчётов, подключённый к общей сети отдела.
+
+        Образ report-web:1 собран из Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            COPY app.py .
+            CMD ["python", "app.py"]
+
+        Файл app.py:
+            from flask import Flask
+
+            app = Flask(__name__)
+
+            @app.get("/")
+            def index():
+                return "report ok"
+
+            app.run(host="0.0.0.0", port=8080)
+
+        Файл compose.yaml (каталог /home/student/report):
+            services:
+
+              report-web:
+                image: report-web:1
+                ports:
+                  - "8040:80"
+                networks:
+                  - office
+
+            networks:
+              office:
+                name: office-net
+                external: true
+
+        Сеть office-net — общая сеть отдела; её создаёт администратор командой
+        docker network create office-net. На этой машине её может ещё не быть.
+        Контейнеров проекта report нет.
+
+        Разработчик утверждает: «Команда docker compose up -d в каталоге report
+        поднимает всё, что нужно: отчёт открывается в браузере на
+        http://localhost:8040, а другие контейнеры сети office-net получают его
+        по адресу http://report-web:8080».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно создавать или не создавать сеть office-net, запускать
+        docker compose up -d / down, менять строки ports и networks в
+        compose.yaml, отправлять запросы с хоста и из другого контейнера,
+        подключённого к office-net (docker container run --network office-net
+        ...). Для каждого сценария укажите исходное условие, ожидаемый результат
+        (создан ли контейнер и как он называется, его статус, что получает
+        запрос, какие сети остаются после down) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D07-С-02
+      text: |
+        Фрагмент. Веб-сервис заявок, который при старте один раз загружает
+        справочник категорий из API.
+
+        Образы ticket-api:1 и ticket-web:1 собраны (Dockerfile у обоих:
+        FROM python:3.12-slim, WORKDIR /app, COPY app.py ., CMD ["python",
+        "app.py"]).
+
+        Файл api/app.py (образ ticket-api:1):
+            import time
+            from flask import Flask
+
+            time.sleep(5)  # долгая инициализация: загрузка данных
+            app = Flask(__name__)
+
+            @app.get("/categories")
+            def categories():
+                return "bug,feature,question"
+
+            app.run(host="0.0.0.0", port=5000)
+
+        Файл web/app.py (образ ticket-web:1):
+            import sys
+            import urllib.request
+            from flask import Flask
+
+            # справочник загружается один раз при старте
+            try:
+                data = urllib.request.urlopen("http://ticket-api:5000/categories").read()
+            except Exception:
+                print("catalog unavailable", flush=True)
+                sys.exit(1)
+            categories = data.decode().split(",")
+            print("catalog loaded:", len(categories), flush=True)
+
+            app = Flask(__name__)
+
+            @app.get("/")
+            def index():
+                return "categories=" + str(len(categories))
+
+            app.run(host="0.0.0.0", port=8080)
+
+        Файл compose.yaml (каталог /home/student/ticket):
+            services:
+
+              ticket-api:
+                image: ticket-api:1
+
+              ticket-web:
+                image: ticket-web:1
+                ports:
+                  - "8050:8080"
+                depends_on:
+                  - ticket-api
+
+        Контейнеров проекта ticket нет.
+
+        Разработчик утверждает: «Благодаря depends_on Compose запускает
+        ticket-web только тогда, когда ticket-api уже работает, поэтому
+        справочник всегда загружается и http://localhost:8050 отвечает
+        categories=3».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно запускать docker compose up -d (весь проект или
+        один сервис), повторять up -d, выполнять docker compose stop / start /
+        down, ждать между командами, смотреть docker compose ps -a и docker
+        compose logs, менять compose.yaml (в том числе добавлять restart). Для
+        каждого сценария укажите исходное условие, ожидаемый результат (статусы
+        контейнеров, что пишет ticket-web в журнал, что отвечает
+        http://localhost:8050) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D07-С-03
+      text: |
+        Фрагмент. Надёжный запуск приложения «дневник» для тестовой среды (как в
+        лабораторной работе главы).
+
+        Образ diary-store:1 (хранилище записей) собран из Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN mkdir /data
+            COPY app.py .
+            CMD ["python", "app.py"]
+
+        Файл store/app.py:
+            import os
+            from flask import Flask
+
+            DATA_FILE = os.environ["DATA_FILE"]
+            app = Flask(__name__)
+
+            @app.post("/add")
+            def add():
+                with open(DATA_FILE, "a") as f:
+                    f.write("entry\n")
+                return "added"
+
+            @app.get("/count")
+            def count():
+                if not os.path.exists(DATA_FILE):
+                    return "entries=0"
+                with open(DATA_FILE) as f:
+                    return "entries=" + str(len(f.readlines()))
+
+            @app.post("/crash")
+            def crash():
+                os._exit(1)  # аварийное завершение процесса
+
+            app.run(host="0.0.0.0", port=6000)
+
+        Образ diary-web:1 собран из Dockerfile (FROM python:3.12-slim, WORKDIR
+        /app, COPY app.py ., CMD ["python", "app.py"]). Файл web/app.py:
+            import os
+            import urllib.request
+            from flask import Flask, request
+
+            STORE = os.environ["STORE_URL"]
+            app = Flask(__name__)
+
+            @app.post("/add")
+            def add():
+                with open("/app/secret/token.txt") as f:
+                    token = f.read().strip()
+                if request.headers.get("X-Token") != token:
+                    return "forbidden", 403
+                return urllib.request.urlopen(STORE + "/add", data=b"").read()
+
+            @app.get("/count")
+            def count():
+                return urllib.request.urlopen(STORE + "/count").read()
+
+            app.run(host="0.0.0.0", port=8080)
+
+        Каталог /home/student/diary (текущий):
+            compose.yaml
+            config/token.txt     (одна строка: s3cret-42)
+        Каталога diary-data нет. Контейнеров проекта diary нет.
+
+        Файл compose.yaml:
+            services:
+
+              diary-store:
+                image: diary-store:1
+                restart: always
+                environment:
+                  - DATA_FILE=/data/entries.txt
+                volumes:
+                  - ./diary-data:/var/diary
+
+              diary-web:
+                image: diary-web:1
+                restart: always
+                ports:
+                  - "80:8080"
+                environment:
+                  - STORE_URL=http://diary-store:6000
+                depends_on:
+                  - diary-store
+                secrets:
+                  - source: diary-token
+                    target: /app/secret/token.txt
+
+            secrets:
+              diary-token:
+                file: ./config/token.txt
+
+        Запросы с хоста: POST http://localhost/add с заголовком X-Token и
+        GET http://localhost/count. Порт diary-store не опубликован; к нему можно
+        обращаться из контейнера diary-web (docker container exec), например
+        запрос POST http://diary-store:6000/crash.
+
+        Разработчик утверждает (требования лабораторной работы): «Контейнеры
+        перезапускаются при сбое и при перезапуске Docker Engine; записи
+        хранилища лежат в каталоге хоста diary-data (bind mount), поэтому
+        переживают docker compose down и up; веб-приложение отвечает на
+        стандартном порту 80; токен подключён как секрет, и изменить его изнутри
+        контейнера нельзя».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно выполнять docker compose up -d / stop / start / down,
+        docker container stop, отправлять запросы (/add с верным и неверным
+        токеном, /count, /crash), пытаться записать в файл секрета из
+        контейнера, менять или удалять файлы в config, менять строки
+        compose.yaml. Для каждого сценария укажите исходное условие, ожидаемый
+        результат (статусы контейнеров, ответы приложения, что лежит в каталоге
+        хоста diary-data, ошибки и их род) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.

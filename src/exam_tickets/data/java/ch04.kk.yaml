@@ -1,0 +1,313 @@
+subject: java
+language: kk
+file_chapter: 4
+chapters:
+- 4
+chapter_titles:
+- How Objects Behave
+levels:
+  cognitive:
+    heading: КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+    points: 24
+    instructions: |
+      Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+    questions:
+    - id: J04-К-01
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Dukan {
+          int jalpy(int sany, int baga) {
+            return sany * baga;
+          }
+
+          void tekser() {
+            long t = jalpy(2, 3);        // 1-жол
+            double d = 2.0;              // 2-жол
+            int e = jalpy(d, 3);         // 3-жол
+            short s = jalpy(3, 7);       // 4-жол
+            jalpy(6, 2);                 // 5-жол
+            int g = jalpy(4);            // 6-жол
+          }
+        }
+
+        1. 1-жол (long t = jalpy(2, 3);) компиляцияланады, себебі әдіс қайтарған int мәні long айнымалысына сыяды. (5 ұпай)
+        2. 3-жол (int e = jalpy(d, 3);) компиляцияланады, себебі d айнымалысының мәні 2.0 — бүтін сан. (5 ұпай)
+        3. 4-жол (short s = jalpy(3, 7);) компиляцияланады, себебі нәтиже 21 short ауқымына сыяды. (5 ұпай)
+        4. 5-жол (jalpy(6, 2);) компиляцияланбайды, себебі әдіс қайтарған мән (return value) ешбір айнымалыға сақталмаған. (5 ұпай)
+        5. 6-жол (int g = jalpy(4);) компиляцияланбайды, себебі әдіс екі параметр күтеді, ал оған бір аргумент (argument) берілген. (4 ұпай)
+    - id: J04-К-02
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Mysyq {
+          private int salmaq;
+
+          public int getSalmaq() {
+            return salmaq;
+          }
+
+          public void setSalmaq(int s) {
+            if (s > 0) {
+              salmaq = s;
+            }
+          }
+        }
+
+        class MysyqTest {
+          public static void main(String[] args) {
+            Mysyq m = new Mysyq();
+            System.out.println(m.getSalmaq());   // A-жол
+            m.setSalmaq(-3);
+            int artyq = 2 + m.getSalmaq();       // B-жол
+            System.out.println(artyq);
+          }
+        }
+
+        1. A-жол экранға 0 шығарады, себебі salmaq дана айнымалысы (instance variable) инициализацияланбаса да, әдепкі (default) 0 мәнін алады. (5 ұпай)
+        2. main() ішіне «m.salmaq = 7;» жолын қоссақ, код компиляцияланады, себебі m сілтемесі (reference) арқылы объектінің кез келген дана айнымалысына нүкте операторымен қол жеткізуге болады. (5 ұпай)
+        3. Соңғы жол экранға 2 шығарады, себебі setSalmaq(-3) шақыруы salmaq мәнін өзгертпейді. (5 ұпай)
+        4. main() соңына «int sany;» және «int jana = sany + 1;» жолдарын қоссақ, код компиляцияланады, себебі жергілікті айнымалы (local variable) да дана айнымалысы сияқты әдепкі 0 мәнін алады. (5 ұпай)
+        5. setSalmaq(int s) әдісіндегі s параметрі — жергілікті айнымалы, ол тек осы әдістің ішінде қолданылады. (4 ұпай)
+    - id: J04-К-03
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Esep {
+          int kobeit(int san) {
+            san = san * 3;
+            return san;
+          }
+
+          void korset(int san) {
+            System.out.println("Мән: " + san);
+          }
+
+          public static void main(String[] args) {
+            int bastapqy = 5;
+            Esep e = new Esep();
+            int natije = e.kobeit(bastapqy);
+            e.korset(bastapqy);
+            System.out.println(bastapqy + " " + natije);
+          }
+        }
+
+        1. Соңғы жол экранға «15 15» шығарады, себебі kobeit() ішінде san өзгергенде bastapqy айнымалысы да өзгереді. (5 ұпай)
+        2. main() соңына «int x = e.korset(natije);» жолын қоссақ, код компиляцияланбайды, себебі korset() әдісінің қайтару типі (return type) void. (5 ұпай)
+        3. korset() әдісінің денесінің соңына «return san;» жолын қоссақ, код компиляцияланады, себебі san — int айнымалысы. (5 ұпай)
+        4. kobeit() әдісінен «return san;» жолын алып тастасақ, код компиляцияланбайды. (5 ұпай)
+        5. Аргумент ретінде берілетін айнымалының аты (bastapqy) параметрдің атымен (san) бірдей болуы міндетті емес. (4 ұпай)
+  functional:
+    heading: ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+    points: 32
+    instructions: |
+      Бағдарламаның орындалуын қадамдап бақылаңыз (trace). Кестенің әр жолы — бір оператор (statement). Әр жол орындалғаннан КЕЙІНГІ толық жағдайды жазыңыз: «Стек» бағанына — стектегі (stack) барлық фреймдерді және олардағы айнымалыларды, «Үйінді» бағанына — үйіндідегі (heap) барлық объектілерді. Әр жол — 4 ұпай (2 + 2).
+      Белгілеулер:
+      - сілтеме (reference) — a→1; бос сілтеме — b=null;
+      - үйіндідегі объект — 1 Tazy объекті (jas=0);
+      - массив (array) — 1 Tazy[] массив объекті: [0]→2, [1]=null;
+      - бірде-бір сілтеме арқылы жетуге болмайтын объект — «— GC кандидаты»;
+      - стекте фреймдер жоғарыдан төмен жазылады, ең үстінде — қазір орындалып жатқан әдіс: setJas(): j=6 / main(): top→1; айнымалысы жоқ фрейм — getJas(): —;
+      - «(… ішінде)» — шақырылған әдістің денесіндегі оператор (return операторы да жеке жол);
+      - «(қайтқаннан кейін)» — әдіс аяқталып, оның нәтижесі айнымалыға меншіктелгеннен кейінгі жағдай (әдістің фреймі бұл кезде стекте жоқ);
+      - void әдісті шақыру жеке жол болып жазылмайды — тек оның денесіндегі операторлар жазылады.
+    questions:
+    - id: J04-Ф-01
+      text: |
+        class Tazy {
+          private int jas;
+
+          public void setJas(int j) {
+            jas = j;
+          }
+
+          public int getJas() {
+            return jas;
+          }
+        }
+
+        class TazyTest {
+          public static void main(String[] args) {
+            Tazy[] top = new Tazy[3];
+            top[0] = new Tazy();
+            top[2] = new Tazy();
+            top[2].setJas(6);
+            top[0] = top[2];
+            int x = top[0].getJas();
+            top[2] = null;
+          }
+        }
+
+        | № | Код                                          | Стек | Үйінді |
+        |---|----------------------------------------------|------|--------|
+        | 1 | Tazy[] top = new Tazy[3];                    |      |        |
+        | 2 | top[0] = new Tazy();                         |      |        |
+        | 3 | top[2] = new Tazy();                         |      |        |
+        | 4 | (setJas ішінде) jas = j;                     |      |        |
+        | 5 | top[0] = top[2];                             |      |        |
+        | 6 | (getJas ішінде) return jas;                  |      |        |
+        | 7 | int x = top[0].getJas(); (қайтқаннан кейін)  |      |        |
+        | 8 | top[2] = null;                               |      |        |
+    - id: J04-Ф-02
+      text: |
+        class Sanaq {
+          int jalpy;
+
+          int ekiese(int arg) {
+            arg = arg * 2;
+            jalpy = jalpy + arg;
+            return arg;
+          }
+
+          public static void main(String[] args) {
+            int orig = 7;
+            Sanaq s = new Sanaq();
+            int y = s.ekiese(orig);
+            orig = s.jalpy + y;
+            s = new Sanaq();
+          }
+        }
+
+        | № | Код                                          | Стек | Үйінді |
+        |---|----------------------------------------------|------|--------|
+        | 1 | int orig = 7;                                |      |        |
+        | 2 | Sanaq s = new Sanaq();                       |      |        |
+        | 3 | (ekiese ішінде) arg = arg * 2;               |      |        |
+        | 4 | (ekiese ішінде) jalpy = jalpy + arg;         |      |        |
+        | 5 | (ekiese ішінде) return arg;                  |      |        |
+        | 6 | int y = s.ekiese(orig); (қайтқаннан кейін)   |      |        |
+        | 7 | orig = s.jalpy + y;                          |      |        |
+        | 8 | s = new Sanaq();                             |      |        |
+    - id: J04-Ф-03
+      text: |
+        Бастапқы күй берілген:
+        - Стек: main(): count=0, a→1, i=0
+        - Үйінді: 1 Aralas[] массив объекті: [0]=null, [1]=null
+        Кесте осы күйден кейін басталады. 1–7 жолдар — циклдің бірінші қайталануы (i = 0), 8-жол — екінші қайталанудың бірінші операторы.
+
+        public class Aralas {
+          int sanaq = 0;
+
+          public static void main(String[] args) {
+            int count = 0;
+            Aralas[] a = new Aralas[2];
+            int i = 0;
+            // ---- кесте осы жерден басталады ----
+            while (i < 2) {
+              a[i] = new Aralas();
+              a[i].sanaq = a[i].sanaq + 1;
+              count = count + a[i].mumkin(i);
+              i = i + 1;
+            }
+          }
+
+          public int mumkin(int index) {
+            if (index < 1) {
+              Aralas m = new Aralas();
+              m.sanaq = m.sanaq + 1;
+              return 1;
+            }
+            return 0;
+          }
+        }
+
+        | № | Код                                                    | Стек | Үйінді |
+        |---|--------------------------------------------------------|------|--------|
+        | 1 | a[i] = new Aralas();                                   |      |        |
+        | 2 | a[i].sanaq = a[i].sanaq + 1;                           |      |        |
+        | 3 | (mumkin ішінде) Aralas m = new Aralas();               |      |        |
+        | 4 | (mumkin ішінде) m.sanaq = m.sanaq + 1;                 |      |        |
+        | 5 | (mumkin ішінде) return 1;                              |      |        |
+        | 6 | count = count + a[i].mumkin(i); (қайтқаннан кейін)     |      |        |
+        | 7 | i = i + 1;                                             |      |        |
+        | 8 | a[i] = new Aralas();                                   |      |        |
+  systemic:
+    heading: ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+    points: 44
+    instructions: |
+      Кодтағы ? белгісінің орнына қойылатын мән (әдіс аргументі немесе өріс мәні) — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+      1. кіріс мәні — әр ? орнына қандай мән қойылады;
+      2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек;
+      3. тест нені тексереді — қай орындалу жолын (path), тармақты (branch) немесе шекараны (boundary).
+
+      Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+    questions:
+    - id: J04-С-01
+      text: |
+        class Tobet {
+          private int salmaq;
+
+          public void setSalmaq(int s) {
+            salmaq = s;
+          }
+
+          public void ure() {
+            if (salmaq > 60) {
+              System.out.println("Арс! Арс!");
+            } else if (salmaq > 15) {
+              System.out.println("Ауп! Ауп!");
+            } else {
+              System.out.println("Қаңқ!");
+            }
+          }
+        }
+
+        class TobetTest {
+          public static void main(String[] args) {
+            Tobet t = new Tobet();
+            t.setSalmaq(?);                 // тест кірісі
+            t.ure();
+          }
+        }
+
+        Талап: төбеттің салмағы 60 кг-нан артық болса, бағдарлама «Арс! Арс!» деп шығаруы керек; салмағы 15 кг-нан 60 кг-ға дейін (15 және 60 қоса) болса — «Ауп! Ауп!»; 15 кг-нан жеңіл болса — «Қаңқ!». Салмақ — теріс емес бүтін сан.
+    - id: J04-С-02
+      text: |
+        class Oiynshy {
+          int upai;
+
+          int bonus(int dengei) {
+            if (upai > 100) {
+              return upai * dengei;
+            } else {
+              return upai * (5 - dengei);
+            }
+          }
+
+          public static void main(String[] args) {
+            Oiynshy o = new Oiynshy();
+            o.upai = ?;                      // тест кірісі
+            int b = o.bonus(?);              // тест кірісі
+            System.out.println("Бонус: " + b);
+          }
+        }
+
+        Талап: ұпайы 100-ден көп ойыншы бонусты «ұпай × деңгей» ретінде алады. Ұпайы 100 немесе одан аз ойыншының бонусы — «ұпай × (5 − деңгей)», бірақ бонус ешқашан теріс болмайды: есептеу теріс сан берсе, бонус 0-ге тең. Ұпай — теріс емес бүтін сан, деңгей — 1-ден 10-ға дейінгі бүтін сан.
+    - id: J04-С-03
+      text: |
+        class Mysyq {
+          private int biiktik;
+
+          public int getBiiktik() {
+            return biiktik;
+          }
+
+          public void setBiiktik(int b) {
+            if (b >= 10 && b <= 50) {
+              biiktik = b;
+            } else {
+              biiktik = 0;
+            }
+          }
+        }
+
+        class MysyqTest {
+          public static void main(String[] args) {
+            Mysyq m = new Mysyq();
+            m.setBiiktik(?);                // 1-кіріс
+            m.setBiiktik(?);                // 2-кіріс
+            System.out.println("Биіктік: " + m.getBiiktik());
+          }
+        }
+
+        Талап: мысықтың биіктігі тек 10-нан 50 см-ге дейінгі (10 және 50 қоса) мәнге өзгереді. Жарамсыз мән берілсе, объектідегі бұрынғы биіктік өзгермей сақталады. Жаңа объектінің биіктігі — 0 (әлі орнатылмаған).

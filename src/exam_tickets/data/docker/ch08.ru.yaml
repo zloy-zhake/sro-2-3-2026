@@ -1,0 +1,874 @@
+subject: docker
+language: ru
+file_chapter: 8
+chapters:
+- 8
+chapter_titles:
+- Supporting reliability with health checks and dependency checks
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      Инструкция для студента.
+      К каждому вопросу дан фрагмент: Dockerfile, файл Docker Compose
+      (docker-compose.yml), скрипты на Python, описание образов и исходного
+      состояния, команды Docker и Docker Compose. После фрагмента даны
+      5 утверждений об этом фрагменте. Все команды выполняются на компьютере
+      с Linux; Docker Compose встроен в Docker CLI (команда docker compose).
+      Справка: правила проверки работоспособности (health check) в
+      современной версии Docker, которые нужно учитывать:
+      - у инструкции HEALTHCHECK в Dockerfile есть параметры --interval,
+        --timeout, --retries и --start-period — это те же настройки, что
+        поля interval, timeout, retries и start_period секции healthcheck в
+        Compose (с. 132). Значения по умолчанию: interval 30s, timeout 30s,
+        retries 3, start-period 0s;
+      - если start_period (--start-period) не задан, первая проверка
+        выполняется через interval после запуска контейнера; до первого
+        результата у контейнера статус (health: starting);
+      - в книге (с. 132) start_period описан как время ожидания перед
+        проверками. Точнее (документация Docker): в этот период проверки уже
+        выполняются, но неудачные проверки не засчитываются в retries; если
+        проверка в этот период прошла успешно, контейнер сразу получает
+        статус (healthy);
+      - в выводе docker container ls статус выглядит так:
+        Up 2 minutes (healthy), Up 2 minutes (unhealthy).
+      Для каждого утверждения напишите «верно» или «неверно» и обоснуйте ответ:
+      какое правило Docker или Docker Compose здесь действует и что именно во
+      фрагменте это показывает. Для неверного утверждения скажите, как обстоит
+      дело на самом деле.
+      Оценка: утверждения 1–4 — по 5 баллов (1 балл за «верно/неверно»,
+      4 балла за обоснование); утверждение 5 — 4 балла (1 + 3).
+      Ответ «верно/неверно» без обоснования оценивается только 1 баллом.
+      Итого за вопрос — 24 балла.
+    questions:
+    - id: D08-К-01
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Каталог /home/student/proverbs-api
+        содержит три файла: app.py, healthcheck.py и Dockerfile.
+        app.py — REST API на Python (Flask): слушает порт 5000 на всех
+        интерфейсах (0.0.0.0); на запрос /proverb отвечает случайной
+        пословицей на английском, на запрос /health — кодом 200 OK. В
+        приложении намеренная ошибка: начиная с четвёртого запроса к /proverb,
+        и /proverb, и /health всегда отвечают кодом 500 Internal Server Error,
+        но процесс python app.py продолжает работать. В базовом образе
+        python:3.12-slim есть Python, но нет утилиты curl.
+
+        Файл healthcheck.py:
+
+        import sys
+        import urllib.request
+
+        try:
+            urllib.request.urlopen("http://localhost:5000/health", timeout=3)
+        except Exception:
+            # нет ответа, истёк тайм-аут или код ответа 500
+            sys.exit(1)
+        sys.exit(0)
+
+        Файл Dockerfile:
+
+        FROM python:3.12-slim
+        WORKDIR /app
+        RUN pip install flask
+        COPY app.py healthcheck.py ./
+        EXPOSE 5000
+        HEALTHCHECK --interval=10s --retries=3 CMD ["python", "healthcheck.py"]
+        CMD ["python", "app.py"]
+
+        В терминале хоста по порядку выполнены команды (все успешно):
+        > cd /home/student/proverbs-api
+        > docker image build -t kz/proverbs-api:v2 .
+        > docker container run -d --name proverbs -p 8094:5000 kz/proverbs-api:v2
+
+        Каждое утверждение рассматривайте отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. Через 3 секунды после команды docker container run команда
+           docker container ls покажет у контейнера proverbs статус
+           Up 3 seconds (health: starting): первая проверка ещё не
+           выполнялась.                                                   (5 баллов)
+        2. На адрес http://localhost:8094/proverb отправили четыре запроса.
+           Через минуту после этого Docker сам перезапустит контейнер
+           proverbs, потому что тот получил статус (unhealthy), и /proverb
+           снова начнёт отвечать пословицами.                             (5 баллов)
+        3. Команду проверки python healthcheck.py Docker выполняет на хосте,
+           поэтому в healthcheck.py нужно было указать опубликованный порт:
+           http://localhost:8094/health; с адресом localhost:5000 проверка
+           всегда будет неудачной.                                        (5 баллов)
+        4. Если в Dockerfile заменить строку HEALTHCHECK на
+           HEALTHCHECK --interval=10s --retries=3 CMD curl --fail http://localhost:5000/health
+           и пересобрать образ, новый контейнер из него получит статус
+           (unhealthy), даже пока приложение исправно отвечает на запросы.
+                                                                          (5 баллов)
+        5. healthcheck.py сообщает Docker результат проверки кодом выхода
+           (exit code): 0 — проверка прошла (ответ 200 OK), 1 — проверка не
+           прошла (нет ответа или код 500).                                (4 балла)
+    - id: D08-К-02
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Приложение пословиц из двух сервисов
+        (service), оба образа уже есть на компьютере:
+        - образ kz/proverbs-api:v3 — REST API (Flask), слушает порт 5000;
+          после запуска контейнера оно около 5 секунд загружает данные и
+          только потом начинает принимать запросы. На /proverb отвечает
+          пословицей, на /health — кодом 200 OK; начиная с четвёртого запроса
+          к /proverb, и /proverb, и /health всегда отвечают кодом 500, но
+          процесс приложения продолжает работать. В Dockerfile образа есть
+          инструкция HEALTHCHECK CMD ["python", "healthcheck.py"] без
+          параметров; healthcheck.py запрашивает
+          http://localhost:5000/health и завершается с кодом 0 при ответе
+          200 OK, иначе — с кодом 1;
+        - образ kz/proverbs-web:v3 — сайт (Flask), слушает порт 8080 и берёт
+          пословицы у API. Инструкции HEALTHCHECK в образе нет. В образе есть
+          depcheck.py и healthcheck.py. Команда запуска контейнера:
+          python depcheck.py && python app.py. depcheck.py один раз
+          запрашивает http://proverbs-api:5000/health и завершается с кодом 0
+          при ответе 200 OK, иначе — с кодом 1. healthcheck.py этого образа
+          запрашивает http://localhost:8080/health и так же завершается с
+          кодом 0 или 1.
+
+        Каталог /home/student/proverbs содержит файл docker-compose.yml:
+
+        services:
+
+          proverbs-api:
+            image: kz/proverbs-api:v3
+            restart: on-failure
+            ports:
+              - "8094:5000"
+            healthcheck:
+              interval: 10s
+              timeout: 2s
+              retries: 3
+              start_period: 20s
+
+          proverbs-web:
+            image: kz/proverbs-web:v3
+            restart: on-failure
+            ports:
+              - "8095:8080"
+            healthcheck:
+              test: ["CMD", "python", "healthcheck.py"]
+              interval: 10s
+              timeout: 2s
+              retries: 3
+              start_period: 10s
+
+        Контейнеров этого приложения на компьютере ещё нет. В терминале хоста,
+        в каталоге /home/student/proverbs, выполнена команда
+        docker compose up -d (успешно). Каждое утверждение рассматривайте
+        отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. У сервиса proverbs-api в секции healthcheck нет поля test, поэтому
+           Docker не проверяет работоспособность этого контейнера, а
+           настройки interval, timeout, retries и start_period ни на что не
+           влияют.                                                        (5 баллов)
+        2. Неудачные проверки в первые 20 секунд после запуска контейнера
+           proverbs-api (пока приложение загружает данные) не засчитываются в
+           retries; первая успешная проверка сразу даёт контейнеру статус
+           (healthy).                                                     (5 баллов)
+        3. Если контейнер proverbs-web запустится раньше, чем API начнёт
+           принимать запросы, depcheck.py завершится с кодом 1, python app.py
+           не запустится и контейнер остановится; Docker снова запустит его
+           из-за restart: on-failure, и когда API станет доступен, сайт
+           заработает.                                                    (5 баллов)
+        4. После четырёх запросов к http://localhost:8094/proverb контейнер
+           proverbs-api получит статус (unhealthy), и Docker перезапустит
+           его, потому что у сервиса указано restart: on-failure.         (5 баллов)
+        5. Compose создаст и запустит контейнер proverbs-web только после
+           того, как proverbs-api получит статус (healthy): для этого в файле
+           и заданы секции healthcheck.                                    (4 балла)
+    - id: D08-К-03
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Образ kz/proverbs-api:v2 уже есть на
+        компьютере: это REST API пословиц (Flask), оно слушает порт 5000 и на
+        запрос /health отвечает кодом 200 OK, пока работает исправно (после
+        сбоя — кодом 500, но процесс продолжает работать).
+        Каталог /home/student/proverbs-web содержит файлы app.py (сайт на
+        Flask, слушает порт 8080 и берёт пословицы у API), depcheck.py и
+        Dockerfile.
+
+        Файл depcheck.py:
+
+        import os
+        import sys
+        import urllib.request
+
+        # адрес API берётся из переменной окружения
+        url = os.environ["API_URL"]
+        try:
+            urllib.request.urlopen(url, timeout=3)
+        except Exception:
+            print("dependency check failed: " + url)
+            sys.exit(1)
+        print("dependency check passed")
+
+        Файл Dockerfile:
+
+        FROM python:3.12-slim
+        WORKDIR /app
+        RUN pip install flask
+        COPY app.py depcheck.py ./
+        ENV API_URL=http://proverbs-api:5000/health
+        EXPOSE 8080
+        CMD python depcheck.py && python app.py
+
+        В терминале хоста по порядку выполнены команды (все успешно):
+        > cd /home/student/proverbs-web
+        > docker image build -t kz/proverbs-web:v2 .
+        > docker network create proverbs-net
+        > docker container run -d --name web --network proverbs-net -p 8095:8080 kz/proverbs-web:v2
+        > docker container run -d --name proverbs-api --network proverbs-net kz/proverbs-api:v2
+
+        Каждое утверждение рассматривайте отдельно; если в утверждении описан
+        другой порядок действий, исходите из него.
+
+        Задание. Верно или неверно и почему?
+        1. После команды docker container run ... --name web контейнер web
+           будет в статусе Exited (1): контейнера proverbs-api ещё нет,
+           depcheck.py завершается с кодом 1, и из-за && команда
+           python app.py не выполняется.                                  (5 баллов)
+        2. Если бы последняя команда запустила API с другим именем
+           (--name api) в той же сети proverbs-net, проверка зависимости
+           (dependency check) в контейнере web не проходила бы, хотя API
+           работает.                                                      (5 баллов)
+        3. После последней команды Docker через несколько секунд сам снова
+           запустит контейнер web, потому что зависимость стала доступна, и
+           сайт http://localhost:8095 заработает.                         (5 баллов)
+        4. Другой порядок: сначала запущен контейнер proverbs-api, затем web
+           (оба Up). Если позже API сломается (/health отвечает 500),
+           depcheck.py это обнаружит, и контейнер web завершится с кодом 1.
+                                                                          (5 баллов)
+        5. В кластере (например, Kubernetes) такое поведение web полезно:
+           платформа перезапустит завершившийся контейнер или заменит его
+           новым, и к тому времени API, скорее всего, уже будет доступен;
+           поэтому завершившийся контейнер лучше работающего, но бесполезного
+           (fail-fast).                                                    (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Инструкция студенту. Даны файлы, исходное состояние и
+      последовательность из 8 команд или событий. Они выполняются строго по
+      порядку, каждая — после завершения предыдущей, в Linux; команды Compose —
+      из каталога проекта (его имя указано в условии). Время событий указано в
+      первом столбце. Первый столбец таблицы заполнен. Заполните два других
+      столбца для каждой строки:
+        - «Состояние сервисов» — какие контейнеры (containers) существуют, в
+          каком статусе и с каким статусом проверки работоспособности (health
+          check); какие сети (networks) есть;
+        - «Результат или действие Docker / Compose» — что делает Docker или
+          Compose с каждым контейнером (создаёт, запускает, ждёт, перезапускает,
+          останавливает, удаляет, ничего не делает) и почему; что ответит
+          приложение (строки ответа даны в условии — запишите их со
+          значениями); что выведет команда; ошибка — словами.
+      Нотация (как в выводе docker container ls):
+        - контейнер: `prov: Up (health: starting)` / `prov: Up (healthy)` /
+          `prov: Up (unhealthy)` / `prov: Up` (у контейнера нет проверки) /
+          `prov: Exited (1)` / `prov: Restarting (1)` (ждёт перезапуска после
+          выхода с кодом 1) / `prov: Created` (создан, не запущен) /
+          `prov: удалён`;
+        - действие Compose: Created (создан), Started (запущен), Running (уже
+          работает — ничего не делается), Waiting (ждёт состояния зависимости),
+          Healthy (зависимость стала healthy), Stopped (остановлен), Removed
+          (удалён), Restarted (перезапущен);
+        - сеть: `proverbs_default: есть`.
+      ID, точное время в выводе («Up 15 seconds») и точный текст сообщений
+      писать не нужно. Если состояние не изменилось, напишите «без изменений»
+      и что именно осталось.
+
+      Справка — правила Docker 29 / Docker Compose v5, которых нет в главе 8
+      или которые в книге описаны иначе:
+        1. Проверка (health check) выполняется внутри контейнера: первая —
+           через interval после запуска контейнера, следующие — каждые
+           interval (длительность самой проверки не учитывайте; в заданиях
+           события не совпадают с моментами проверок). Код выхода (exit code)
+           0 — успех, любой другой — неудача.
+        2. До первого результата статус — (health: starting). Успешная
+           проверка сразу даёт (healthy) и обнуляет счётчик неудач подряд
+           (FailingStreak). Когда счётчик достигает retries, статус —
+           (unhealthy). Проверки продолжаются и в состоянии unhealthy.
+        3. start_period: пока статус (health: starting) и время от запуска
+           меньше start_period, неудачные проверки не засчитываются в счётчик
+           (в книге на с. 132 сказано, что проверки в этот период не
+           запускаются, — на деле запускаются). После первой успешной проверки
+           неудачи засчитываются всегда, даже если start_period ещё не истёк.
+        4. restart: on-failure — Docker перезапускает контейнер, если его
+           процесс завершился с ненулевым кодом. Паузы между попытками растут
+           (0,1 с, 0,2 с, 0,4 с, …), но не больше 1 минуты; во время паузы
+           docker container ls показывает Restarting (1).
+        5. Длинная форма depends_on:
+             depends_on:
+               api:
+                 condition: service_healthy
+           service_started — зависимый сервис запускается после запуска
+           зависимости (как короткая форма); service_healthy — после того, как
+           зависимость стала (healthy). Compose сначала создаёт все контейнеры
+           (Created), затем запускает их в порядке зависимостей. Если
+           зависимость стала (unhealthy) раньше, чем (healthy), команда up
+           завершается с ошибкой «dependency failed to start».
+
+      Оценка: 8 строк по 4 балла (2 балла — столбец состояния, 2 балла — столбец
+      результата). Итого 32 балла. Ответ поясните устно.
+    questions:
+    - id: D08-Ф-01
+      text: |
+        Исходное состояние:
+        - в локальном кэше есть образ proverbs/api:v1, собранный из файлов ниже
+          (Flask уже установлен в образе);
+        - контейнеров нет; порт 8090 хоста свободен.
+
+        Файл Dockerfile:
+        FROM python:3.12-slim
+        WORKDIR /app
+        RUN pip install flask
+        COPY app.py healthcheck.py ./
+        EXPOSE 5000
+        HEALTHCHECK --interval=10s --retries=3 CMD ["python", "healthcheck.py"]
+        CMD ["python", "app.py"]
+
+        Файл app.py:
+        from flask import Flask
+
+        app = Flask(__name__)
+        calls = 0  # сколько пословиц уже выдано
+
+        @app.route("/proverb")
+        def proverb():
+            global calls
+            if calls >= 3:  # после трёх пословиц приложение «ломается»
+                return "error", 500
+            calls += 1
+            return f"proverb #{calls}"
+
+        @app.route("/health")
+        def health():
+            if calls >= 3:
+                return "broken", 500
+            return "ok"
+
+        app.run(host="0.0.0.0", port=5000)
+
+        Файл healthcheck.py:
+        import sys
+        import urllib.request
+
+        try:
+            with urllib.request.urlopen("http://localhost:5000/health", timeout=2) as r:
+                sys.exit(0 if r.status == 200 else 1)
+        except Exception:  # ответ 500 или нет соединения
+            sys.exit(1)
+
+        Команда INSPECT (строка 7) печатает статус контейнера, статус проверки
+        и число неудачных проверок подряд:
+        docker container inspect --format "{{.State.Status}} {{.State.Health.Status}} {{.State.Health.FailingStreak}}" prov
+
+        Задание: заполните таблицу. t — время в секундах от запуска контейнера
+        командой в строке 1 (в строке 8 — тоже от этого момента).
+
+        | № | Команда или событие                                                  | Состояние сервисов | Результат или действие Docker |
+        |---|----------------------------------------------------------------------|--------------------|-------------------------------|
+        | 1 | t = 0:  docker container run -d --name prov -p 8090:5000             |                    |                               |
+        |   |         proverbs/api:v1                                              |                    |                               |
+        | 2 | t = 5:  docker container ls                                          |                    |                               |
+        | 3 | t = 15: docker container ls                                          |                    |                               |
+        | 4 | t = 16: открыть в браузере http://localhost:8090/proverb четыре раза |                    |                               |
+        |   |         подряд                                                       |                    |                               |
+        | 5 | t = 25: docker container ls                                          |                    |                               |
+        | 6 | t = 45: docker container ls                                          |                    |                               |
+        | 7 | t = 55: команда INSPECT (см. ниже)                                   |                    |                               |
+        | 8 | t = 60: docker container rm -f prov                                  |                    |                               |
+        |   |         docker container run -d --name prov -p 8090:5000             |                    |                               |
+        |   |         proverbs/api:v1                                              |                    |                               |
+        |   | t = 75: docker container ls                                          |                    |                               |
+
+        Баллы: 8 строк × 4 = 32.
+    - id: D08-Ф-02
+      text: |
+        Исходное состояние:
+        - каталог проекта называется proverbs, в нём файл compose.yaml (ниже);
+          контейнеры называются <проект>-<сервис>-<номер> (proverbs-api-1),
+          сеть по умолчанию — proverbs_default;
+        - в локальном кэше есть образы:
+          proverbs/api:v2 — Flask-приложение на порту 5000: запрос /proverb
+          первые три раза отвечает «proverb #1», «proverb #2», «proverb #3»,
+          затем всегда HTTP 500; запрос /health отвечает 200 «ok», пока выдано
+          меньше трёх пословиц, затем 500. В образе есть инструкция
+          HEALTHCHECK CMD ["python", "healthcheck.py"] (без параметров);
+          healthcheck.py запрашивает http://localhost:5000/health и завершается
+          с кодом 0 при ответе 200, иначе — с кодом 1;
+          proverbs/web:v1 — собран из Dockerfile ниже; web.py слушает порт
+          8000: на запрос / он запрашивает API_URL + "/proverb" и отвечает
+          «web: <ответ API>», а если API ответил ошибкой или недоступен —
+          «web: api error»;
+        - контейнеров и сетей проекта нет.
+
+        Файл compose.yaml:
+        services:
+          api:
+            image: proverbs/api:v2
+            healthcheck:
+              interval: 10s
+              retries: 2
+
+          web:
+            image: proverbs/web:v1
+            restart: on-failure
+            ports:
+              - "8092:8000"
+            environment:
+              - API_URL=http://api:5000
+
+        Файл Dockerfile (образ proverbs/web:v1):
+        FROM python:3.12-slim
+        WORKDIR /app
+        RUN pip install flask
+        COPY web.py depcheck.py ./
+        EXPOSE 8000
+        # сначала проверка зависимости, затем приложение
+        CMD python depcheck.py && python web.py
+
+        Файл depcheck.py:
+        import os
+        import sys
+        import urllib.request
+
+        url = os.environ["API_URL"] + "/health"
+        try:
+            with urllib.request.urlopen(url, timeout=2) as r:
+                print("depcheck: OK")
+                sys.exit(0)
+        except Exception:  # ответ 500, имя не найдено или нет соединения
+            print("depcheck: FAILED")
+            sys.exit(1)
+
+        Задание: заполните таблицу (команды и события — в первом столбце).
+
+        | № | Команда или событие                                               | Состояние сервисов | Результат или действие Docker / Compose |
+        |---|-------------------------------------------------------------------|--------------------|-----------------------------------------|
+        | 1 | docker compose up -d web                                          |                    |                                         |
+        | 2 | docker compose up -d api;                                         |                    |                                         |
+        |   | через 2 минуты — docker container ls                              |                    |                                         |
+        | 3 | открыть в браузере http://localhost:8092/ четыре раза подряд      |                    |                                         |
+        | 4 | через 30 с — docker container ls                                  |                    |                                         |
+        | 5 | открыть в браузере http://localhost:8092/                         |                    |                                         |
+        | 6 | процесс web.py в контейнере proverbs-web-1 аварийно завершился    |                    |                                         |
+        |   | с кодом 1; через 1 минуту — docker container ls -a                |                    |                                         |
+        | 7 | docker compose restart api;                                       |                    |                                         |
+        |   | через 2 минуты — docker container ls                              |                    |                                         |
+        | 8 | открыть в браузере http://localhost:8092/                         |                    |                                         |
+
+        Баллы: 8 строк × 4 = 32.
+    - id: D08-Ф-03
+      text: |
+        Исходное состояние:
+        - каталог проекта называется wisdom, в нём файл compose.yaml (ниже);
+          контейнеры называются <проект>-<сервис>-<номер> (wisdom-api-1), сеть
+          по умолчанию — wisdom_default;
+        - в локальном кэше есть образы:
+          proverbs/api:v3 — Flask-приложение на порту 5000 с медленным стартом:
+          принимает запросы только через 13 с после запуска контейнера (до
+          этого соединение отклоняется). Запрос /proverb первые три раза
+          отвечает «proverb #1», «proverb #2», «proverb #3», затем всегда
+          HTTP 500; запрос /health отвечает 200, пока выдано меньше трёх
+          пословиц, затем 500. В образе есть healthcheck.py: запрашивает
+          http://localhost:5000/health и завершается с кодом 0 при ответе 200,
+          иначе (в том числе если соединение отклонено) — с кодом 1. Инструкции
+          HEALTHCHECK в образе нет;
+          proverbs/web:v2 — web.py на порту 8000 (запускается сразу, проверки
+          зависимости нет): на запрос / он запрашивает API_URL + "/proverb" и
+          отвечает «web: <ответ API>», а если API ответил ошибкой или
+          недоступен — «web: api error»;
+        - контейнеров и сетей проекта нет.
+
+        Файл compose.yaml:
+        services:
+          api:
+            image: proverbs/api:v3
+            healthcheck:
+              test: ["CMD", "python", "healthcheck.py"]
+              interval: 5s
+              retries: 2
+              start_period: 30s
+
+          web:
+            image: proverbs/web:v2
+            ports:
+              - "8094:8000"
+            environment:
+              - API_URL=http://api:5000
+            depends_on:
+              api:
+                condition: service_healthy
+
+        Задание: заполните таблицу (команды и события — в первом столбце).
+
+        | № | Команда или событие                                               | Состояние сервисов | Результат или действие Compose |
+        |---|-------------------------------------------------------------------|--------------------|--------------------------------|
+        | 1 | docker compose up -d                                              |                    |                                |
+        | 2 | сразу после этого открыть в браузере http://localhost:8094/       |                    |                                |
+        |   | четыре раза подряд                                                |                    |                                |
+        | 3 | через 30 с — docker container ls                                  |                    |                                |
+        | 4 | docker compose down; в compose.yaml удалить строку                |                    |                                |
+        |   | «start_period: 30s»; docker compose up -d                         |                    |                                |
+        | 5 | через 10 с после завершения команды up — docker container ls -a   |                    |                                |
+        | 6 | docker compose up -d                                              |                    |                                |
+        | 7 | открыть в браузере http://localhost:8094/                         |                    |                                |
+        | 8 | docker compose down; в compose.yaml заменить service_healthy на   |                    |                                |
+        |   | service_started; docker compose up -d; сразу после этого открыть  |                    |                                |
+        |   | http://localhost:8094/                                            |                    |                                |
+
+        Баллы: 8 строк × 4 = 32.
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Глава 8. Сценарии проверки.
+
+      Инструкция. В каждом вопросе дан фрагмент — Dockerfile и/или файл Docker
+      Compose (compose.yaml), файлы приложения — и описание исходного
+      состояния: какие образы (images) собраны, какие контейнеры есть.
+      Придумайте 4 сценария проверки (как тест-кейсы) и запишите их в таблицу:
+
+      | № | Исходное условие или действие | Ожидаемый результат | Что проверяет сценарий |
+      |---|-------------------------------|---------------------|------------------------|
+
+      - Исходное условие или действие — что именно вы делаете или задаёте:
+        какие команды docker / docker compose и в каком порядке выполняются,
+        сколько секунд вы ждёте между ними, что изменено перед ними (строка
+        Dockerfile или compose.yaml, значение переменной окружения
+        (environment)), какой сервис остановлен или не запущен, какие запросы
+        отправлены приложению.
+      - Ожидаемый результат — что покажет Docker или приложение: статус
+        контейнера (Up / Exited / Restarting) и статус проверки
+        работоспособности (health check) в docker container ls или docker
+        compose ps -a — (health: starting) / (healthy) / (unhealthy);
+        перезапускался ли контейнер; что приложение пишет в журнал (logs); что
+        отвечает приложение (например, proverb 2, ошибка 500, ответа нет).
+      - Что проверяет сценарий — какое правило Docker / Docker Compose или
+        какое утверждение из задания подтверждается или опровергается.
+      Сценарии должны давать разные исходы. ID, точное время и точный текст
+      сообщений не нужны: время указывайте приблизительно («примерно через
+      30 с»), результат описывайте словами (например: «контейнер web:
+      Up (unhealthy)», «контейнер перезапускается снова и снова, в журнале
+      dependency check failed», «ответ 503 api unavailable»).
+
+      Справка (правила Docker, которые нужны для ответа):
+      - Проверка работоспособности (HEALTHCHECK в Dockerfile, healthcheck в
+        compose.yaml) — команда, которую Docker периодически выполняет внутри
+        контейнера. Код выхода 0 — проверка успешна, любой другой код —
+        неудачна. Команда в виде строки выполняется через /bin/sh -c, команда
+        в виде JSON-массива — напрямую.
+      - Значения по умолчанию: interval 30s, timeout 30s, retries 3,
+        start_period 0s. Первая проверка выполняется через interval после
+        запуска контейнера, затем — каждые interval.
+      - Статус: после запуска — (health: starting); успешная проверка сразу
+        даёт (healthy) (в том числе после unhealthy); retries неудачных
+        проверок подряд дают (unhealthy). В течение start_period проверки идут
+        каждые 5 с, неудачи не считаются, а успешная проверка сразу даёт
+        (healthy).
+      - Политика перезапуска (restart policy): on-failure — Docker запускает
+        контейнер заново, если его процесс завершился с ненулевым кодом
+        выхода; always — после любого завершения процесса. Задержка между
+        повторными запусками растёт (от долей секунды до минуты); пока
+        контейнер ждёт повторного запуска, его статус Restarting. Контейнер,
+        остановленный командой stop, заново не запускается.
+      - Имя проекта Compose по умолчанию — имя каталога, где лежит
+        compose.yaml; контейнеры называются <проект>-<сервис>-1. Другие
+        контейнеры сети находят контейнер по имени сервиса.
+      - Приложения во фрагментах останавливаются командой stop около 10
+        секунд; код выхода после stop (Exited (…)) указывать не нужно.
+
+      Оценка: 4 сценария по 8 баллов (исходное условие — 2, ожидаемый результат — 3,
+      что проверяет — 3) = 32 балла + защита сценариев у экзаменатора — 12 баллов.
+      Итого 44 балла.
+    questions:
+    - id: D08-С-01
+      text: |
+        Фрагмент. API пословиц с проверкой работоспособности (health check),
+        встроенной в образ.
+
+        Каталог /home/student/proverbs-api: Dockerfile, app.py, healthcheck.py.
+
+        Файл Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN pip install flask
+            COPY app.py healthcheck.py ./
+            HEALTHCHECK --interval=10s --retries=3 \
+                CMD curl --fail http://localhost:5000/health
+            CMD ["python", "app.py"]
+
+        Файл app.py:
+            from flask import Flask
+
+            app = Flask(__name__)
+            calls = 0
+            LIMIT = 3  # после трёх запросов /proverb приложение «ломается»
+
+            @app.get("/proverb")
+            def proverb():
+                global calls
+                calls += 1
+                if calls > LIMIT:
+                    return "error", 500
+                return "proverb " + str(calls)
+
+            @app.get("/health")
+            def health():
+                if calls > LIMIT:
+                    return "broken", 500
+                return "ok"
+
+            app.run(host="0.0.0.0", port=5000)
+
+        Файл healthcheck.py (лежит в образе, в Dockerfile пока не используется):
+            import sys
+            import urllib.request
+
+            # код выхода 0 — /health ответил 200, 1 — ошибка или нет ответа
+            try:
+                urllib.request.urlopen("http://localhost:5000/health", timeout=3)
+            except Exception:
+                sys.exit(1)
+            sys.exit(0)
+
+        Базовый образ python:3.12-slim содержит Python 3.12, pip и оболочку sh;
+        утилит curl и wget в нём нет.
+
+        Образ собран в каталоге proverbs-api командой
+        docker image build -t proverbs-api:1 . Контейнер запускается командой:
+            docker container run -d --name proverbs -p 8070:5000 proverbs-api:1
+        Контейнера proverbs сейчас нет.
+
+        Разработчик утверждает: «Сразу после запуска и всё время, пока
+        приложение отвечает, docker container ls показывает контейнер proverbs
+        как (healthy). После трёх запросов /proverb приложение ломается, и
+        примерно через 30 с контейнер становится (unhealthy). Если процесс
+        приложения остановится, контейнер тоже будет (unhealthy)».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно запускать, останавливать и удалять контейнер
+        (docker container run / stop / rm -f), ждать нужное время, смотреть
+        docker container ls (с -a и без) и docker container inspect (раздел
+        .State.Health — журнал последних проверок с кодами выхода), отправлять с
+        хоста запросы http://localhost:8070/proverb и http://localhost:8070/health,
+        менять строки Dockerfile и пересобирать образ с тем же тегом. Для каждого
+        сценария укажите исходное условие, ожидаемый результат (статус контейнера
+        и статус health в указанные моменты времени, ответы приложения, коды
+        выхода проверок — успех или неудача) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D08-С-02
+      text: |
+        Фрагмент. Веб-приложение пословиц с проверкой зависимостей (dependency
+        check) при старте.
+
+        Каталог /home/student/proverbs (текущий):
+            compose.yaml
+            api/   Dockerfile, app.py
+            web/   Dockerfile, app.py, depcheck.py
+
+        Образы собраны: docker image build -t proverbs-api:2 api и
+        docker image build -t proverbs-web:2 web.
+
+        Файл api/Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN pip install flask
+            COPY app.py .
+            CMD ["python", "app.py"]
+
+        Файл api/app.py:
+            import os
+            import time
+            from flask import Flask
+
+            time.sleep(5)  # долгая инициализация: загрузка пословиц
+            app = Flask(__name__)
+
+            @app.get("/proverb")
+            def proverb():
+                return "proverb ok"
+
+            @app.get("/health")
+            def health():
+                return "ok"
+
+            app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "5000")))
+
+        Файл web/Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN pip install flask
+            COPY app.py depcheck.py ./
+            CMD python depcheck.py -t 3 && python app.py
+
+        Файл web/depcheck.py:
+            import sys
+            import urllib.request
+
+            # проверка зависимостей (dependency check): доступен ли API
+            URL = "http://proverbs-api:5000/health"
+            timeout = float(sys.argv[2])  # запуск: python depcheck.py -t <секунды>
+
+            try:
+                urllib.request.urlopen(URL, timeout=timeout)
+            except Exception:
+                print("dependency check failed", flush=True)
+                sys.exit(1)
+            print("dependency check passed", flush=True)
+
+        Файл web/app.py:
+            import os
+            import urllib.request
+            from flask import Flask
+
+            API_URL = os.environ["API_URL"]
+            app = Flask(__name__)
+
+            @app.get("/")
+            def index():
+                try:
+                    return urllib.request.urlopen(API_URL + "/proverb", timeout=3).read()
+                except Exception:
+                    return "api unavailable", 503
+
+            app.run(host="0.0.0.0", port=8000)
+
+        Файл compose.yaml:
+            services:
+
+              proverbs-api:
+                image: proverbs-api:2
+                environment:
+                  - PORT=8080
+
+              proverbs-web:
+                image: proverbs-web:2
+                restart: on-failure
+                ports:
+                  - "8072:8000"
+                environment:
+                  - API_URL=http://proverbs-api:8080
+
+        Контейнеров проекта proverbs нет.
+
+        Разработчик утверждает: «depends_on не нужен. Если proverbs-web
+        запустится раньше, чем API готов, проверка зависимостей завершит
+        контейнер с кодом 1, restart: on-failure запустит его снова, и через
+        несколько секунд http://localhost:8072 отвечает proverb ok. Если API
+        позже остановится, proverbs-web тоже завершится и будет перезапускаться,
+        пока API не вернётся».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно выполнять docker compose up -d (весь проект или один
+        сервис), docker compose stop / start / down, ждать между командами,
+        смотреть docker compose ps -a и docker compose logs proverbs-web,
+        отправлять запросы на http://localhost:8072, менять строки compose.yaml
+        (environment, restart) или файлы в web и пересобирать образ
+        proverbs-web:2. Для каждого сценария укажите исходное условие,
+        ожидаемый результат (статусы контейнеров, перезапускается ли
+        proverbs-web, что он пишет в журнал, что отвечает http://localhost:8072)
+        и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D08-С-03
+      text: |
+        Фрагмент. Сервис квот, который постоянно занимает всё больше памяти (по
+        мотивам лабораторной работы главы; приложение только имитирует расход
+        памяти).
+
+        Каталог /home/student/quota (текущий): compose.yaml, Dockerfile, app.py,
+        memcheck.py. Образ собран: docker image build -t quota:1 .
+
+        Файл Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN pip install flask
+            COPY app.py memcheck.py ./
+            CMD python memcheck.py startup && python app.py
+
+        Файл app.py:
+            import time
+            from flask import Flask
+
+            time.sleep(8)  # медленный старт: загрузка квот
+            START = time.time()
+            app = Flask(__name__)
+
+            @app.get("/memory")
+            def memory():
+                # приложение «занимает» 10 МБ каждую секунду работы
+                return str(int(time.time() - START) * 10)
+
+            app.run(host="0.0.0.0", port=7000)
+
+        Файл memcheck.py (одна утилита для двух проверок):
+            import os
+            import sys
+            import urllib.request
+
+            LIMIT = int(os.environ["MEMORY_LIMIT_MB"])
+
+            if sys.argv[1] == "startup":
+                # при старте: хватает ли памяти для работы
+                if int(os.environ["MEMORY_AVAILABLE_MB"]) < LIMIT:
+                    print("not enough memory", flush=True)
+                    sys.exit(1)
+                sys.exit(0)
+
+            # health: не превышен ли лимит занятой памяти
+            try:
+                reply = urllib.request.urlopen("http://localhost:7000/memory", timeout=2)
+                used = int(reply.read())
+            except Exception:
+                sys.exit(1)
+            if used > LIMIT:
+                sys.exit(1)
+            sys.exit(0)
+
+        Файл compose.yaml:
+            services:
+
+              quota:
+                image: quota:1
+                restart: always
+                ports:
+                  - "8074:7000"
+                environment:
+                  - MEMORY_LIMIT_MB=300
+                  - MEMORY_AVAILABLE_MB=500
+                healthcheck:
+                  test: ["CMD", "python", "memcheck.py", "health"]
+                  interval: 5s
+                  timeout: 2s
+                  retries: 1
+
+        Контейнеров проекта quota нет. Время отсчитывается от команды
+        docker compose up -d (запуск контейнера занимает доли секунды).
+
+        Разработчик утверждает (требования лабораторной работы): «При старте
+        приложение проверяет, хватает ли памяти, и при нехватке не запускается.
+        Каждые 5 секунд проверка работоспособности смотрит, не превышен ли
+        лимит; контейнер становится (unhealthy) тогда и только тогда, когда
+        лимит превышен. Благодаря restart: always Docker сразу заменяет
+        unhealthy-контейнер новым, так что сервис восстанавливается сам
+        (self-healing)».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно выполнять docker compose up -d / down, ждать нужное
+        время, смотреть docker compose ps -a, docker compose logs quota и
+        docker container inspect (число перезапусков RestartCount, раздел
+        .State.Health), отправлять запросы на http://localhost:8074/memory,
+        менять значения в compose.yaml (переменные окружения, параметры
+        healthcheck, restart). Для каждого сценария укажите исходное условие,
+        ожидаемый результат (статус контейнера и статус health в указанные
+        моменты времени, перезапускался ли контейнер, ответ /memory, что в
+        журнале) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.

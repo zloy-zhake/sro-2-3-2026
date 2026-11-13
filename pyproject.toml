@@ -47,7 +47,8 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 # D103: имена тестов описательные (CLAUDE.md), докстринг дублировал бы имя
-"tests/**" = ["S101", "PLR2004", "D103"]
+# S311: в тестах нужен детерминированный random.Random(seed), не криптография
+"tests/**" = ["S101", "PLR2004", "D103", "S311"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

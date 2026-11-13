@@ -4,13 +4,20 @@ import logging
 import re
 from collections import defaultdict
 from collections.abc import Sequence
+from dataclasses import dataclass
 from importlib.resources.abc import Traversable
 
 import yaml
 from pydantic import ValidationError
 
 from exam_tickets.exceptions import DataError
-from exam_tickets.models import LEVEL_LETTERS, ChapterFile, Lang, SubjectRegistry
+from exam_tickets.models import (
+    LEVEL_LETTERS,
+    ChapterFile,
+    Lang,
+    Subject,
+    SubjectRegistry,
+)
 
 logger = logging.getLogger(name=__name__)
 
@@ -117,3 +124,99 @@ def find_id_mismatches(chapters: Sequence[ChapterFile]) -> list[tuple[str, int]]
         if incomplete or any(ids != id_sets[0] for ids in id_sets):
             mismatches.append((slug, number))
     return mismatches
+
+
+def _chapter_file_name(chapter: ChapterFile) -> str:
+    """Возвращает ожидаемое имя YAML главы: ``chNN.<язык>.yaml``."""
+    return f"ch{chapter.file_chapter:02d}.{chapter.language.value}.yaml"
+
+
+def _load_chapter(item: Traversable, subject: Subject) -> ChapterFile:
+    """Читает один YAML главы и сверяет его с именем файла и каталогом предмета.
+
+    Имя и каталог — часть контракта (§3.2): если содержимое им противоречит,
+    файл скопирован или переименован вручную, и доверять ему нельзя.
+
+    Args:
+        item: YAML-файл главы.
+        subject: Предмет, в чьём каталоге лежит файл.
+
+    Returns:
+        Проверенный файл главы.
+
+    Raises:
+        DataError: Если файл не читается, не проходит валидацию или
+            противоречит своему имени и каталогу.
+    """
+    try:
+        chapter = ChapterFile.model_validate(
+            yaml.safe_load(item.read_text(encoding="utf-8"))
+        )
+    except (OSError, UnicodeDecodeError, yaml.YAMLError, ValidationError) as e:
+        logger.error("Файл главы не загружен", extra={"file": item.name})
+        raise DataError(f"{subject.slug}/{item.name}: {e}") from e
+    if chapter.subject != subject.slug or _chapter_file_name(chapter) != item.name:
+        raise DataError(
+            f"{subject.slug}/{item.name}: содержимое не соответствует имени файла"
+        )
+    return chapter
+
+
+@dataclass(frozen=True)
+class Dataset:
+    """Все загруженные вопросы с индексом ``(предмет, язык) → файлы глав``.
+
+    Attributes:
+        registry: Реестр предметов.
+        chapters: Файлы глав, упорядоченные по номеру главы.
+    """
+
+    registry: SubjectRegistry
+    chapters: dict[tuple[str, Lang], list[ChapterFile]]
+
+    @classmethod
+    def load(cls, root: Traversable) -> Dataset:
+        """Загружает и проверяет все данные из корня.
+
+        Корень передаётся параметром: так один код читает и пакетные данные
+        (``importlib.resources``), и временные каталоги тестов. Порядок файлов
+        из ``iterdir`` не гарантирован, поэтому результат сортируется.
+
+        Args:
+            root: Корень данных с ``subjects.yaml`` и каталогами предметов.
+
+        Returns:
+            Загруженный набор данных.
+
+        Raises:
+            DataError: При любой ошибке чтения или валидации.
+        """
+        registry = load_registry(root=root)
+        loaded: list[ChapterFile] = []
+        for subject in registry.subjects:
+            folder = root.joinpath(subject.slug)
+            if not folder.is_dir():
+                raise DataError(f"нет каталога данных предмета {subject.slug}")
+            yaml_files = [f for f in folder.iterdir() if f.name.endswith(".yaml")]
+            loaded += [
+                _load_chapter(item=item, subject=subject)
+                for item in sorted(yaml_files, key=lambda f: f.name)
+            ]
+        check_chapters(chapters=loaded, registry=registry)
+        index: dict[tuple[str, Lang], list[ChapterFile]] = defaultdict(list)
+        for chapter in sorted(loaded, key=lambda c: c.file_chapter):
+            index[(chapter.subject, chapter.language)].append(chapter)
+        logger.info("Данные загружены", extra={"files": len(loaded)})
+        return cls(registry=registry, chapters=dict(index))
+
+    def files(self, subject: str, language: Lang) -> list[ChapterFile]:
+        """Возвращает файлы глав предмета на языке, по возрастанию главы.
+
+        Args:
+            subject: Slug предмета.
+            language: Язык вопросов.
+
+        Returns:
+            Список файлов (пустой, если для комбинации данных нет).
+        """
+        return self.chapters.get((subject, language), [])

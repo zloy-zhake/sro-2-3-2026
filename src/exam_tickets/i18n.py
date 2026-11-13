@@ -13,8 +13,8 @@ STRINGS: dict[str, dict[Lang, str]] = {
         Lang.KK: "СӨЖ-2 / СӨЖ-3 билеттер генераторы",
     },
     "title": {
-        Lang.RU: "Генератор экзаменационных билетов",
-        Lang.KK: "Емтихан билеттерінің генераторы",
+        Lang.RU: "Генератор заданий",
+        Lang.KK: "Тапсырма генераторы",
     },
     "subject": {Lang.RU: "Предмет", Lang.KK: "Пән"},
     "subject_placeholder": {Lang.RU: "Выберите предмет", Lang.KK: "Пәнді таңдаңыз"},

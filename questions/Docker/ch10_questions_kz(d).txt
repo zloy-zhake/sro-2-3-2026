@@ -1,0 +1,1102 @@
+ch10_questions_kz
+Корпоративтік АЖ-ды ОБ талдау мен жобалаудың заманауи технологиялары (Docker модулі) — ауызша емтихан, 10-тарау «Running multiple environments with Docker Compose» (Stoneman, Learn Docker in a Month of Lunches, 2nd ed.)
+Жауапсыз тапсырмалар. 10.11.2026
+
+======================================================================
+КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+======================================================================
+10-тарау. Docker Compose көмегімен бірнеше ортаны іске қосу.
+
+Студентке нұсқаулық.
+Сізге 10-тараудан үш тәуелсіз фрагмент берілген: Docker Compose файлдарының
+жиынтығы — негізгі файл, override-файлдар, айнымалылар файлы (env file) `.env`,
+қолданбаның конфигурациялық файлдары — және осы файлдармен іске қосылатын
+командалар. Әр фрагменттің жанында бастапқы күй сипатталған: компьютерде
+не бар әлі (қандай образдар, контейнерлер, желілер), қандай файлдар жасалған,
+қандай порттар бос. Жауапқа керек бәрі шартта берілген: емтиханда компьютер
+жоқ, қағазда шешеміз, Docker-ді іске қосу қажет емес.
+
+Әр сұрақтағы тапсырыш бірдей: өз фрагментіңіз туралы бес тұжырым бойынша
+оны дұрыс па әлде дұрыс емес па деп анықтаңыз және жауабыңызды негіздеңіз.
+Негіздемеде жауабыңыз сүйенетін Docker Compose ережесін атап, осы ереженің
+дәл осы фрагментте қалай әрекет ететінін көрсетіңіз: шарттағы нақты
+файлдарды, кілттерді және мәндерді атаңыз.
+
+Бағалау: 1–4 тұжырымдар — әрқайсысы 5 ұпай («дұрыс/дұрыс емес» жауабы үшін
+1 ұпай + негіздеме үшін 4 ұпай); 5-тұжырым — 4 ұпай (жауап үшін 1 ұпай +
+негіздеме үшін 3 ұпай). Деңгей бойынша барлығы 24 ұпай.
+Тапсырыштар тәуелсіз: әрқайсысы өз фрагментіне сүйенеді, сұрақтардың
+шығарылу реті маңызды емес.
+
+----------------------------------------------------------------------
+D10-К-01
+----------------------------------------------------------------------
+Фрагмент.
+Бастапқы күй: Docker Engine орнатылған және іске қосылған. Образдар
+d10k/q1-journal-web:1.0, d10k/q1-journal-web:1.0-dev және d10k/q1-journal-web:1.2
+алдын ала жиналып, жергілікті компьютерде бар; осы жобаның контейнерлері,
+желілері және томтары жоқ; 8500 және 8510 порттары бос. `journal/` каталогында
+үш compose-файлы бар, басқа compose-файлдар жоқ, `.env` файлы жоқ.
+
+Қолданба — Python-де жазылған шағын HTTP-сервер (образдар python:3.12-alpine
+негізінде жиналған). Ол контейнер ішінде 8500 портын тыңдайды және іске
+қосылғанда журналға мына жолдарды басып шығарады:
+  port=8500
+  storage=<Journal__Storage айнымалысының мәні>
+  log=<Journal__LogLevel айнымалысының мәні>
+
+Файл journal/docker-compose.yml (негізгі файл):
+```yaml
+services:
+  journal-web:
+    image: d10k/q1-journal-web:1.0
+    ports:
+      - 8500
+    environment:
+      - Journal__Storage=file
+      - Journal__LogLevel=Information
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Файл journal/docker-compose-local.yml (жергілікті әзірлеуге арналған override):
+```yaml
+services:
+  journal-web:
+    image: d10k/q1-journal-web:1.0-dev
+    environment:
+      - Journal__LogLevel=Debug
+```
+
+Файл journal/docker-compose-prod.yml (өнімдік ортаға арналған override):
+```yaml
+services:
+  journal-web:
+    image: d10k/q1-journal-web:1.2
+```
+
+Студент ойланып іске қосатын команда, `journal/` папкасы бар каталогтан:
+```
+docker compose -f ./journal/docker-compose.yml -f ./journal/docker-compose-local.yml -f ./journal/docker-compose-prod.yml config
+```
+
+Тапсырыш. Дұрыс па, дұрыс емес пе және неге?
+1. `journal/docker-compose-local.yml` override-файлында `journal-web` блогы
+   `services:` бөлімінің ішінде жазылған — тек сондай ғана Compose
+   override-файлын негізгі файлдағы сервис анықтамасымен сәйкестендіреді
+   (`services` → сервис атауы → қасиет атауы) жолы бойынша; егер `journal-web:`
+   файлдың бастапқы деңгейінде жазылса, Compose негізгі файлдағы сервисті
+   таппай, қажетті біріктіру нәтижесін алмаған болар еді. (5 ұпай)
+2. Үш файл біріктірілгеннен кейін `journal-web` сервисінің соңғы образы
+   `d10k/q1-journal-web:1.0-dev` болады, өйткені `docker-compose-local.yml`
+   файлы `-f` тізімінде `docker-compose-prod.yml` файлынан бұрын
+   көрсетілген. (5 ұпай)
+3. `config` командасы `journal-web` сервисін іске қосады, хостта 8500 портын
+   жариялайды және `app-net` желісін жасайды — яғни қолданбаны «қуақ» іске
+   қосуы (dry run). (5 ұпай)
+4. Соңғы конфигурациядағы `Journal__LogLevel` айнымалысы `Information` мәнінде
+   қалады, өйткені override-файлдар негізгі файлды тек толықтырады, бірақ
+   `environment` бөлімінде әлдеқаштан белгіленген мәндерді қайта белгілей
+   алмайды. (5 ұпай)
+5. Override-файлде аталмаған қасиеттерді Compose негізгі файлдан алады: соңғы
+   конфигурацияда `journal-web` сервисінде `ports: - 8500` жолы,
+   `Journal__Storage=file` айнымалысы және `app-net` желісі сақталады.
+   (4 ұпай)
+
+----------------------------------------------------------------------
+D10-К-02
+----------------------------------------------------------------------
+Фрагмент.
+Бастапқы күй: Docker Engine орнатылған және іске қосылған. Образдар
+d10k/q2-tasks-web:1.0 және postgres:16-alpine жергілікті компьютерде бар;
+осы жобаның контейнерлері, желілері және томтары жоқ; 8521 және 8543 порттары
+бос; стенд — Linux. `tasks/` каталогында екі compose-файл, `.env` файлы және
+`config/` ішкі каталогы бар.
+
+Қолданба — Python-де жазылған шағын HTTP-сервер (образ python:3.12-alpine
+негізінде жиналған). Ол контейнер ішінде 8080 портын тыңдайды және іске
+қосылғанда журналға мына жолдарды басып шығарады:
+  port=8080
+  provider=<Tasks__Provider айнымалысының мәні>
+  log=<Tasks__LogLevel айнымалысының мәні>
+  secret=<қолданба тапқан конфигурация файлының жолы> немесе secret=not found
+
+Файл tasks/docker-compose.yml (негізгі файл):
+```yaml
+services:
+  tasks-web:
+    image: d10k/q2-tasks-web:1.0
+    secrets:
+      - source: tasks-db-connection
+        target: /app/config/secrets.json
+```
+
+Файл tasks/docker-compose-test.yml (тест ортасына арналған override):
+```yaml
+services:
+  tasks-web:
+    ports:
+      - "${TASKS_WEB_PORT}:8080"
+    environment:
+      - Tasks__Provider=Postgres
+    env_file:
+      - ./config/logging.information.env
+
+  tasks-db:
+    image: postgres:16-alpine
+    ports:
+      - "${TASKS_DB_PORT}:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=tasks
+
+secrets:
+  tasks-db-connection:
+    file: ./config/secrets.json
+```
+
+Файл tasks/config/logging.information.env:
+```
+Tasks__LogLevel=Information
+Tasks__Trace=false
+```
+
+Файл tasks/config/secrets.json:
+```json
+{
+  "ConnectionStrings": {
+    "TasksDb": "Server=tasks-db;Database=tasks;User Id=postgres;Password=postgres;"
+  }
+}
+```
+
+Файл tasks/.env:
+```
+# контейнер конфигурациясы - жарияланатын порттар:
+TASKS_WEB_PORT=8521
+TASKS_DB_PORT=8543
+
+# compose конфигурациясы - файлдар және жоба аты:
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_FILE=docker-compose.yml:docker-compose-test.yml
+COMPOSE_PROJECT_NAME=tasks-ch10
+```
+
+Студент ойланып іске қосатын команда, `tasks/` каталогынан:
+```
+docker compose up -d
+```
+
+Тапсырыш. Дұрыс па, дұрыс емес пе және неге?
+1. `.env` файлы контейнер үшін ғана мәндерді белгілейді; оның ішіндегі
+   `COMPOSE_FILE` және `COMPOSE_PROJECT_NAME` айнымалыларын Compose `-f` және
+   `-p` кілттері берілмейін іске қосылғанда елемейді, сондықтан файлдар
+   жиыны мен жоба аты әрқашан тек командолық жолда белгіленеді. (5 ұпай)
+2. Compose ағымдағы каталогтағы `.env` файлын автоматты түрде оқиды және
+   файл атауы тұрақты: `.env` файлын басқаша атауға және айнымалылар файлын
+   басқа атаумен қосуға болмайды. (5 ұпай)
+3. Егер бірдей айнымалы `environment` ішінде де, `env_file` ішінде де
+   белгіленген болса, контейнерге `env_file` мәні түседі, өйткені айнымалылар
+   файлы кейін жүктеледі. (5 ұпай)
+4. `tasks-db-connection` секреті веб-қолданба контейнеріне
+   `/app/config/secrets.json` жолы бойынша файл ретінде түседі: `source`
+   мәнінде жоғарғы деңгейдегі `secrets` бөліміндегі секрет атауы көрсетілген,
+   ал `target` файл контейнер ішінде пайда болатын жолды белгілейді.
+   (5 ұпай)
+5. `.env` файлындағы `TASKS_WEB_PORT=8521` мәні
+   `ports: - "${TASKS_WEB_PORT}:8080"` жолына қойылады, сондықтан веб-қолданба
+   хостта 8521 портында жарияланады. (4 ұпай)
+
+----------------------------------------------------------------------
+D10-К-03
+----------------------------------------------------------------------
+Фрагмент.
+Бастапқы күй: Docker Engine орнатылған және іске қосылған. Образ
+d10k/q3-photos-web:1.0 алдын ала жиналып, жергілікті компьютерде бар; осы
+жобаның контейнерлері, желілері және томтары жоқ; 8610 порты бос;
+`GALLERY_METRICS_URL` айнымалысы студенттің қоршаған ортасында белгіленген
+жоқ. `gallery/` каталогында екі compose-файл бар, басқа compose-файлдар жоқ.
+
+Қолданба — Python-де жазылған шағын HTTP-сервер (образ python:3.12-alpine
+негізінде жиналған). Ол контейнер ішінде 8080 портын тыңдайды және іске
+қосылғанда журналға мына жолдарды басып шығарады:
+  port=8080
+  metrics_url=<GALLERY_METRICS_URL айнымалысының мәні>
+
+Файл gallery/docker-compose.yml (негізгі файл):
+```yaml
+services:
+  photos:
+    image: d10k/q3-photos-web:1.0
+    environment:
+      - GALLERY_METRICS_URL=${GALLERY_METRICS_URL}
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Файл gallery/docker-compose-prod.yml (өнімдік ортаға арналған override):
+```yaml
+x-logging: &logging
+  logging:
+    options:
+      max-size: '50m'
+      max-file: '5'
+
+x-labels: &labels
+  app-name: photo-gallery
+
+services:
+  photos:
+    ports:
+      - 8610:8080
+    <<: *logging
+    labels:
+      <<: *labels
+      public: web
+
+networks:
+  app-net:
+    name: photo-gallery-prod
+```
+
+Студент ойланып іске қосатын команда, `gallery/` папкасы бар каталогтан:
+```
+docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-prod.yml config
+```
+
+Тапсырыш. Дұрыс па, дұрыс емес пе және неге?
+1. Кеңейтуді (extension field) `x-logging` негізгі `docker-compose.yml`
+   файлында жариялап, содан кейін `docker-compose-prod.yml` override-файлында
+   `<<: *logging` арқылы қолдануға болады: Compose файлдарды біріктіріп,
+   жақындау мәнін қояды. (5 ұпай)
+2. Біріктіруден кейін `photos` сервисінде `max-size: '50m'` және
+   `max-file: '5'` опциялары бар `logging` блогы және екі метка —
+   `app-name: photo-gallery` және `public: web` пайда болады. (5 ұпай)
+3. `<<: *logging` жолын сервистің `logging` блогының ішінде жазу керек:
+   `x-logging` кеңейтуында тек журналирование параметрлері бар, ал оның
+   өзі `logging` бөлімі жоқ. (5 ұпай)
+4. `GALLERY_METRICS_URL` айнымалысы белгіленбеген туралы ескерту `config`
+   командасының орындалуын үзді және соңғы конфигурация басылмайды.
+   (5 ұпай)
+5. Кеңейтулер compose-файлының бастапқы деңгейінде, `services` және
+   `networks` бөлімдерінен тыс жарияланады және келісу бойынша `x-` префиксін
+   алатын атау алады. (4 ұпай)
+======================================================================
+ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+======================================================================
+Студентке арналған нұсқаулық. Docker Compose жобасының (project) 8
+конфигурация параметрінің тізбегі және Compose өз қорытынды конфигурациясын
+жинайтын файлдар жиыны берілген. Кестенің бірінші бағаны толтырылған.
+Әр жол үшін қалған екі бағанды толтырыңыз:
+  - «Біріктуден және қоймадан кейінгі нақты мәні» — параметрдің қорытынды
+    (біріктірілген) конфигурациядағы мәні, шарттағыдай дәл жазылғандай
+    (мысалы `8471 → 8080`, `Postgres`, `d10f/q3-wx-web:1.0`, `өшірілген`,
+    `2 қызмет: wx-api және wx-web`);
+  - «Мән қайдан алынды» — бұл мәнді қай файл (`docker-compose.yml`,
+    `docker-compose-dev.yml`, `docker-compose-test.yml`, `.env`,
+    `config/...`) немесе қай айнымалы (`COMPOSE_FILE`,
+    `COMPOSE_PROJECT_NAME`, `TODO_WEB_PORT`) береді. Егер параметр ядродан
+    келсе, ал override-файлда ол болмаса, — солай жазыңыз.
+Ескеріңіз: compose-файлдар тізімделген кезекте біріктіріледі (оң жақтағы
+файл сол жақтағы файлды жабады); `.env` файлындағы айнымалылар
+compose-файлдарға қоймаланады; жоба желісіндегі қызмет атауы DNS-аты ретінде
+жұмыс істейді.
+Бағалау: 8 жол × 4 ұпай (2 ұпай — нақты мән, 2 ұпай — мәннің дереккөзі).
+Барлығы 32 ұпай. Жауабыңызды ауызша түсіндіріңіз.
+
+----------------------------------------------------------------------
+D10-Ф-01
+----------------------------------------------------------------------
+Фрагмент.
+Бастапқы күй:
+- Linux және Docker Engine орнатылған компьютер; жергілікті образ кэшінде
+  (image cache) екі образ бар: `d10f/q1-rng-api:1.0` және
+  `d10f/q1-rng-web:1.0` — екеуі де Python-де жазылған шағын HTTP серверлер;
+  басқа образдер жоқ;
+- екі образ де бірдей құрылған: контейнер ішінде сервер 8080 портын тыңдайды,
+  іске қосу командасы — `python app.py`, `d10f/q1-rng-api:1.0` образында
+  `/app/healthcheck.py` файлы бар (ол `http://localhost:8080/healthz`
+  мекенжайына HTTP сұрау жасайды және сәтті жауап қамында 0 кодымен
+  аяқталады), `d10f/q1-rng-web:1.0` образында мұндай файл жоқ;
+- контейнерлер (containers) жоқ, желілер (networks) жоқ;
+- compose-файлдар орналасқан каталогтың аты `d10f-q1`; Compose жобасының
+  (project) аты командада анық көрсетілген — `-p d10f-q1`;
+- компьютердегі 8471 және 8472 порттары бос.
+
+Қолданба келесі командамен іске қосылады:
+
+```bash
+docker compose -f ./docker-compose.yml -f ./docker-compose-dev.yml -p d10f-q1 up -d
+```
+
+d10f-q1 каталогындағы docker-compose.yml файлы (қолданба ядросы):
+
+```yaml
+services:
+
+  rng-api:
+    image: d10f/q1-rng-api:1.0
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-net
+
+  rng-web:
+    image: d10f/q1-rng-web:1.0
+    environment:
+      - RngApi__Url=http://rng-api:8080/rng
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Сол каталогдағы docker-compose-dev.yml файлы (әзірлеу ортасының
+override-файлы):
+
+```yaml
+services:
+  rng-api:
+    ports:
+      - "8471:8080"
+    healthcheck:
+      disable: true
+
+  rng-web:
+    entrypoint:
+      - python
+      - app.py
+    ports:
+      - "8472:8080"
+
+networks:
+  app-net:
+    name: rng-dev
+```
+
+Тапсырыш. Кестені толтырыңыз: бірінші баған толтырылған, қалған екі бағанға
+файлдарды біріктіріп, айнымалыларды қоймалағаннан кейінгі параметрдің нақты
+мәнін және мән қайдан алынғанын жазыңыз.
+
+| № | Конфигурация параметрі | Біріктуден және қоймадан кейінгі нақты мәні | Мән қайдан алынды (файл немесе айнымалы) |
+|---|----------------------|----------------------------------------|------------------------------------------|
+| 1 | rng-api және rng-web қызметтерінің образдары |   |   |
+| 2 | rng-api қызметінің жарияланған порты (компьютер порты → контейнер порты) |   |   |
+| 3 | rng-web қызметінің жарияланған порты (компьютер порты → контейнер порты) |   |   |
+| 4 | rng-api қызметінің жұмысқа қабілеттілік тексерісі (health check) |   |   |
+| 5 | rng-web қызметінің кіру нүктесі (entrypoint) |   |   |
+| 6 | Екі қызмет те қосылатын желінің (network) аты |   |   |
+| 7 | Қорытынды конфигурациядағы қызметтер саны |   |   |
+| 8 | rng-web-тің rng-api-ге жүгінетін DNS-аты |   |   |
+
+Ұпай: 32 (8 жол × 4).
+
+----------------------------------------------------------------------
+D10-Ф-02
+----------------------------------------------------------------------
+Фрагмент.
+Бастапқы күй:
+- Linux және Docker Engine орнатылған компьютер; жергілікті образ кэшінде
+  (image cache) `d10f/q2-todo-web:1.0` образы бар (Python-де жазылған шағын
+  HTTP сервер, контейнер ішінде 8080 портын тыңдайды, баптауларын қоршаған
+  орта айнымалыларынан және `/app/config/db.json` файлынан оқиды) және
+  `postgres:16-alpine` образы;
+- контейнерлер (containers) жоқ, желілер (networks) жоқ, томдар (volumes)
+  жоқ;
+- compose-файлдар орналасқан каталогтың аты `d10f-q2-app`; команда осы
+  каталогтан іске қосылады, `-f` және `-p` пернелері жоқ;
+- оболда (shell) `TODO_WEB_PORT`, `TODO_DB_PORT`, `COMPOSE_FILE`,
+  `COMPOSE_PROJECT_NAME` және `COMPOSE_PATH_SEPARATOR` айнымалылары жоқ;
+- компьютердегі 8477, 8478 және 8479 порттары бос.
+
+Қолданба келесі командамен іске қосылады:
+
+```bash
+cd ./d10f-q2-app
+docker compose up -d
+```
+
+d10f-q2-app каталогындағы docker-compose.yml файлы (қолданба ядросы):
+
+```yaml
+services:
+
+  todo-web:
+    image: d10f/q2-todo-web:1.0
+    secrets:
+      - source: todo-db-connection
+        target: /app/config/db.json
+```
+
+Сол каталогдағы docker-compose-dev.yml файлы (әзірлеу ортасының
+override-файлы):
+
+```yaml
+services:
+  todo-web:
+    ports:
+      - "8479:8080"
+    environment:
+      - Database:Provider=Sqlite
+    env_file:
+      - ./config/logging.verbose.env
+
+secrets:
+  todo-db-connection:
+    file: ./config/empty.json
+```
+
+Сол каталогдағы docker-compose-test.yml файлы (тест ортасының
+override-файлы):
+
+```yaml
+services:
+  todo-web:
+    ports:
+      - "${TODO_WEB_PORT}:8080"
+    environment:
+      - Database:Provider=Postgres
+    env_file:
+      - ./config/logging.quiet.env
+    networks:
+      - app-net
+
+  todo-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=todo
+      - POSTGRES_USER=todo
+      - POSTGRES_PASSWORD=todo
+    ports:
+      - "${TODO_DB_PORT}:5432"
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    name: d10f-q2-test
+
+secrets:
+  todo-db-connection:
+    file: ./config/db-connection.json
+```
+
+Сол каталогдағы .env файлы:
+
+```
+# контейнердің конфигурациясы - жарияланатын порттар:
+TODO_WEB_PORT=8477
+TODO_DB_PORT=8478
+
+# compose конфигурациясы - файлдар мен жоба аты:
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_FILE=docker-compose.yml:docker-compose-test.yml
+COMPOSE_PROJECT_NAME=d10f-q2
+```
+
+Қолданбаның баптау файлдары config ішкі каталогында:
+
+config/logging.verbose.env:
+
+```
+Logging__LogLevel__Default=Debug
+Logging__LogLevel__System=Debug
+Logging__LogLevel__Microsoft=Debug
+```
+
+config/logging.quiet.env:
+
+```
+Logging__LogLevel__Default=Information
+Logging__LogLevel__System=Warning
+Logging__LogLevel__Microsoft=Warning
+```
+
+config/empty.json:
+
+```
+{}
+```
+
+config/db-connection.json:
+
+```
+{
+  "ConnectionStrings": {
+    "ToDoDb": "Server=todo-db;Database=todo;User Id=todo;Password=todo;"
+  }
+}
+```
+
+Тапсырыш. Кестені толтырыңыз: бірінші баған толтырылған, қалған екі бағанға
+файлдарды біріктіріп, айнымалыларды қоймалағаннан кейінгі параметрдің нақты
+мәнін және мән қайдан алынғанын жазыңыз.
+
+| № | Конфигурация параметрі | Біріктуден және қоймадан кейінгі нақты мәні | Мән қайдан алынды (файл немесе айнымалы) |
+|---|----------------------|----------------------------------------|------------------------------------------|
+| 1 | `docker compose up -d` командасында Compose қандай compose-файлдарды біріктірді (және қандайларын біріктірмеді) |   |   |
+| 2 | Compose жобасының (project) аты |   |   |
+| 3 | todo-web және todo-db қызметтерінің жарияланған порттары (компьютер порты → контейнер порты) |   |   |
+| 4 | todo-web контейнерінің ішіндегі Database:Provider мәні |   |   |
+| 5 | Логирование айнымалылары бар файл (env_file) және оның мазмұны: қандай айнымалылар контейнерге түседі |   |   |
+| 6 | Секрет: дереккөз аты (source), контейнер ішіндегі жолы (target) және дисктегі дереккөз файл |   |   |
+| 7 | Жоба желісінің (network) аты |   |   |
+| 8 | Қорытынды конфигурациядағы қызметтер құрамы |   |   |
+
+Ұпай: 32 (8 жол × 4).
+
+----------------------------------------------------------------------
+D10-Ф-03
+----------------------------------------------------------------------
+Фрагмент.
+Бастапқы күй:
+- Linux және Docker Engine орнатылған компьютер; жергілікті образ кэшінде
+  (image cache) екі образ бар: `d10f/q3-wx-api:1.0` және
+  `d10f/q3-wx-web:1.0` — екеуі де Python-де жазылған шағын HTTP серверлер;
+  басқа образдер жоқ;
+- екі образ де бірдей құрылған: контейнер ішінде сервер 8080 портын тыңдайды,
+  іске қосу командасы — `python app.py`, екі образде де `/app/healthcheck.py`
+  файлы бар (ол `http://localhost:8080/healthz` мекенжайына HTTP сұрау
+  жасайды және сәтті жауап қамында 0 кодымен аяқталады);
+- контейнерлер (containers) жоқ, желілер (networks) жоқ;
+- compose-файлдар орналасқан каталогтың аты `d10f-q3`; Compose жобасының
+  (project) аты командада анық көрсетілген — `-p d10f-q3`;
+- компьютердегі 8480 порты бос.
+
+Қолданба келесі командамен іске қосылады:
+
+```bash
+docker compose -f ./docker-compose.yml -f ./docker-compose-test.yml -p d10f-q3 up -d
+```
+
+d10f-q3 каталогындағы docker-compose.yml файлы (қолданба ядросы):
+
+```yaml
+services:
+
+  wx-api:
+    image: d10f/q3-wx-api:1.0
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-net
+
+  wx-web:
+    image: d10f/q3-wx-web:1.0
+    environment:
+      - WxApi__Url=http://wx-api:8080/forecast
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Сол каталогдағы docker-compose-test.yml файлы (тест ортасының
+override-файлы):
+
+```yaml
+services:
+  wx-api:
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 25s
+      timeout: 12s
+      retries: 5
+      start_period: 20s
+
+  wx-web:
+    ports:
+      - "8480:8080"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 25s
+      timeout: 12s
+      retries: 5
+      start_period: 15s
+
+networks:
+  app-net:
+    name: d10f-q3-test
+```
+
+Тапсырыш. Кестені толтырыңыз: бірінші баған толтырылған, қалған екі бағанға
+файлдарды біріктіріп, айнымалыларды қоймалағаннан кейінгі параметрдің нақты
+мәнін және мән қайдан алынғанын жазыңыз.
+
+| № | Конфигурация параметрі | Біріктуден және қоймадан кейінгі нақты мәні | Мән қайдан алынды (файл немесе айнымалы) |
+|---|----------------------|----------------------------------------|------------------------------------------|
+| 1 | wx-api және wx-web қызметтерінің образдары |   |   |
+| 2 | wx-web қызметінің жарияланған порты (компьютер порты → контейнер порты) |   |   |
+| 3 | wx-api қызметінің жарияланған порты |   |   |
+| 4 | wx-api қызметінің жұмысқа қабілеттілік тексерісінің (health check) параметрлері |   |   |
+| 5 | wx-web қызметінің жұмысқа қабілеттілік тексерісі (health check) |   |   |
+| 6 | wx-web қызметінің қайта іске қосу (restart) саясаты |   |   |
+| 7 | Екі қызмет те қосылатын желінің (network) аты |   |   |
+| 8 | wx-web-тің wx-api-ге жүгінетін DNS-аты |   |   |
+
+Ұпай: 32 (8 жол × 4).
+======================================================================
+ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+======================================================================
+10-тарау. Тексеру сценарийлері.
+
+Инструкция. Әр сұрақта фрагмент берілген: Docker Compose конфигурациясы
+файлдары (ядро, override-файлдар, .env, қолданба конфигурациясы файлдары) және
+қажет болса, командалар тізбегі; қасында бастапқы күйдің сипаттамасы берілген —
+машинада не бар (қандай образдар (image), контейнерлер (container), желілер
+(network), томдар (volume)), қандай файлдар жасалған, қандай порттар бос.
+Жауап үшін керектінің бәрі шартта берілген: экзаменде компьютер жоқ, қағаз
+бетінде шешеміз.
+
+Барлық сұрақта қолданба — Python тіліндегі шағын HTTP сервер. Ол іске қосылғанда
+журналға мына түрдегі жолдарды шығарады:
+  port=8080                          — қолданба тыңдайтын порт
+  db=<БД провайдері айнымалысының мәні>
+  log=<журналдеу деңгейі>
+  dbhost=<БД серверінің мекенжайы>
+  secret=<қолданба тапқан конфигурация файлының жолы> немесе secret=not found
+Бұл журнал жолдары — контейнерге қай конфигурация жеткенін қағаз бетінде
+байқауға болатын белгі.
+
+Әр сұрақтағы тапсырыш бірдей: осы фрагмент бойынша 4 тексеру сценарийін
+(тест-кейс) ойлап табыңыз. Әр сценарий үшін көрсетіңіз:
+  1) бастапқы шарт немесе әрекет — қай файл өзгертілді немесе жойылды, қандай
+     мән қоршаған орта айнымалысы (environment variable) тапсырылды, -f кілтінен
+     кейін файлдар қандай тәртіпте жазылған, команда қай каталогтан
+     іске қосылады, қандай жоба атауы (project name) көрсетілген;
+  2) күтілетін нәтиже — Docker Compose не көрсетеді немесе өз қолданбасы не
+     шығарады: қандай контейнерлер (қандай аттар мен порттармен) пайда болады,
+     қай конфигурация параметрі қандай мән алады, қолданба журналға не жазады,
+     қандай типтегі қате туындайды (хабарламаның дәл сөзін жазудың қажеті
+     жоқ — қате түрін айту жеткілікті);
+  3) сценарий нені тексереді — ол Docker Compose қай ережесін растайды немесе
+     қандай қатеді ұстайды.
+Сценарийлер бастапқы шарты бойынша ажыратылуы керек; тек жазу түрі басқаша
+болған сценарий қайталану деп саналады. Кемінде бір сценарий жағдайда аталған
+жасырын қатеді ұстауы керек.
+
+Жауап форматы — үш толтырылатын бағаны бар кесте:
+
+| № | Бастапқы шарт немесе әрекет | Күтілетін нәтиже | Сценарий нені тексереді |
+|---|-------------------------------|---------------------|------------------------|
+
+----------------------------------------------------------------------
+D10-С-01
+----------------------------------------------------------------------
+Фрагмент.
+«Жазбалар» (notes) қолданбасы — Python тіліндегі шағын HTTP сервер (образдар
+d10/notes-api:1.0 және d10/notes-web:1.0). Іске қосылғанда веб-контейнер
+журналға жолдарды шығарады:
+  port=8080
+  db=<Notes__DbProvider мәні>
+API контейнері http://notes-api:8080/notes мекенжайы бойынша жауап береді
+(бұл мекенжай веб-қолданбаға Notes__ApiUrl айнымалысы арқылы беріледі).
+
+Бастапқы күй. Docker Engine жұмыс істеуде; машинада notes-* аттарымен
+контейнерлер мен желілер жоқ; d10/notes-api:1.0, d10/notes-web:1.0,
+d10/notes-web:1.1 және d10/notes-web:1.2 образдері алдын ала жиналып, жергілікті
+түрде жатыр. Бос порттар: 8471, 8472, 8473, 8474, 8475. Файлдар notes-app/
+каталогында жатыр (төмендегі тізімді қараңыз).
+
+Файл notes-app/docker-compose.yml (ядро):
+```yaml
+services:
+  notes-api:
+    image: d10/notes-api:1.0
+    environment:
+      - Notes__DbProvider=Sqlite
+    networks:
+      - app-net
+
+  notes-web:
+    image: d10/notes-web:1.0
+    environment:
+      - Notes__ApiUrl=http://notes-api:8080/notes
+    ports:
+      - "8080"
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Файл notes-app/docker-compose-v2.yml (override, тек образды өзгертеді):
+```yaml
+services:
+  notes-web:
+    image: d10/notes-web:1.1
+```
+
+Файл notes-app/docker-compose-dev.yml (override):
+```yaml
+services:
+  notes-api:
+    ports:
+      - "8471:8080"
+    healthcheck:
+      disable: true
+
+  notes-web:
+    entrypoint:
+      - python
+      - app.py
+    ports:
+      - "8472:8080"
+
+networks:
+  app-net:
+    name: notes-dev
+```
+
+Файл notes-app/docker-compose-test.yml (override):
+```yaml
+services:
+  notes-api:
+    healthcheck:
+      interval: 20s
+      start_period: 15s
+      retries: 4
+
+  notes-web:
+    ports:
+      - "8473:8080"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 4
+      start_period: 10s
+
+networks:
+  app-net:
+    name: notes-test
+```
+
+Файл notes-app/docker-compose-uat.yml (override):
+```yaml
+services:
+  notes-api:
+    healthcheck:
+      interval: 10s
+      retries: 2
+    restart: always
+    ports:
+      - "8474:8080"
+
+  notes-web:
+    image: d10/notes-web:1.2
+    restart: always
+    ports:
+      - "8475:8080"
+    healthcheck:
+      interval: 10s
+      retries: 2
+
+networks:
+  app-net:
+    name: notes-uat
+```
+
+Тексеру кезінде студент қолдана алатын командалар (Docker Compose v2, әр команда
+бір жолда):
+```
+# ядро мен override-файл біріктірілуінің нәтижесін қарау (ештеңе орнатылмайды):
+docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-v2.yml config
+
+# test ортасын орнату:
+docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-test.yml -p notes-test up -d
+
+# uat ортасын орнату:
+docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-uat.yml -p notes-uat up -d
+
+# test ортасын тоқтату және жою:
+docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-test.yml -p notes-test down
+```
+
+Тапсырыш. Осы файлдар жиыны үшін 4 тексеру сценарийін ойлап табыңыз. Әр
+сценарий үшін көрсетіңіз: бастапқы шарт (қай файл өзгертілді, -f кілтінен кейін
+файлдар қандай тәртіпте жазылған, командада қандай жоба атауы көрсетілген),
+күтілетін нәтиже (қандай контейнерлер, қандай аттар мен порттармен пайда болады;
+қай қасиеттер қандай мән алады; қандай типтегі қате туындайды) және сценарий нені
+тексереді. Кемінде бір сценарий жасырын қатеді ұстауы керек: -f файлдарының
+тәртібі шатыстырылған, down командасында -p жоба атауы ұмытылған немесе
+override-файлдағы сервис атауы ядро файлындағы сервис атауымен сәйкес келмейді.
+
+Ұпай: 4 сценарий × 8 = 32; қорғау — 12. Барлығы 44.
+
+----------------------------------------------------------------------
+D10-С-02
+----------------------------------------------------------------------
+Фрагмент.
+«Күнделік» (calendar) қолданбасы — Python тіліндегі шағын HTTP сервер (образ
+d10/calendar-web:1.0) және бөлек база сервері (образ postgres:16-alpine). Іске
+қосылғанда веб-қолданба журналға жолдарды шығарады:
+  port=8080
+  db=<Calendar__DbProvider мәні>
+  log=<Calendar__LogLevel мәні>
+  dbhost=<Calendar__DbHost мәні>
+Егер базаға қосылу мүмкін болмаса, dbhost=... жолының орнына қосылу қатесі
+туралы хабарлама шығады.
+
+Бастапқы күй. Docker Engine жұмыс істеуде; машинада calendar-* аттарымен
+контейнерлер мен желілер жоқ; d10/calendar-web:1.0 және postgres:16-alpine
+образдері алдын ала жиналып, жергілікті түрде жатыр. Бос порттар: 8481
+(dev-ортадағы web) және 8482 (test-ортадағы web), сондай-ақ база үшін 5433
+порты. `calendar/` каталогы compose-файлдарды, `config/` ішкі каталогы —
+`logging.env` файлын, және `.env` файлын қамтиды (Compose ағымдағы жұмыс
+каталогындағы `.env` атты файлды оқиды; файлдың басқа атауын беруге болмайды).
+
+Файл calendar/.env:
+```
+# контейнер конфигурациясы - жарияланатын порттар:
+CALENDAR_WEB_PORT=8482
+CALENDAR_DB_PORT=5433
+CALENDAR_DB_HOST=calendar-db
+
+# compose конфигурациясы - файлдар мен жоба атауы:
+COMPOSE_PATH_SEPARATOR=:
+COMPOSE_FILE=docker-compose.yml:docker-compose-test.yml
+COMPOSE_PROJECT_NAME=calendar-svc
+```
+
+Файл calendar/docker-compose.yml (ядро):
+```yaml
+services:
+  calendar-web:
+    image: d10/calendar-web:1.0
+    environment:
+      - Calendar__DbProvider=Sqlite
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Файл calendar/docker-compose-dev.yml (override):
+```yaml
+services:
+  calendar-web:
+    ports:
+      - "8481:8080"
+    environment:
+      - Calendar__LogLevel=Debug
+    env_file:
+      - ./config/logging.env
+
+networks:
+  app-net:
+    name: calendar-dev
+```
+
+Файл calendar/docker-compose-test.yml (override):
+```yaml
+services:
+  calendar-web:
+    ports:
+      - "${CALENDAR_WEB_PORT}:8080"
+    environment:
+      - Calendar__DbProvider=Postgres
+      - Calendar__DbHost=${CALENDAR_DB_HOST}
+    env_file:
+      - ./config/logging.env
+    networks:
+      - app-net
+
+  calendar-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=calendar
+      - POSTGRES_USER=calendar
+      - POSTGRES_PASSWORD=calendar
+    ports:
+      - "${CALENDAR_DB_PORT}:5432"
+    volumes:
+      - calendar-db-data:/var/lib/postgresql/data
+    networks:
+      - app-net
+
+volumes:
+  calendar-db-data:
+```
+
+Файл calendar/config/logging.env:
+```
+Calendar__LogLevel=Information
+Calendar__LogLevel__System=Warning
+```
+
+Тараудың нұсқаулығындағыдай іске қосу командасы:
+```
+cd ./calendar
+docker compose up -d
+```
+
+Тапсырыш. Осы файлдар жиыны мен .env файлы үшін 4 тексеру сценарийін ойлап
+табыңыз. Әр сценарий үшін көрсетіңіз: бастапқы шарт (.env файлының қай жолы
+өзгертілді немесе жойылды, команда қай каталогтан іске қосылады, -f кейін
+қандай файлдар жазылған, қандай орта орнатылады), күтілетін нәтиже (қандай
+контейнерлер және қандай порттармен пайда болады, қойылатын айнымалы қандай мән
+алады, қолданба журналға не жазады, қандай типтегі қате туындайды) және сценарий
+нені тексереді. Кемінде бір сценарий жасырын қатеді ұстауы керек:
+COMPOSE_PATH_SEPARATOR бөлгіші ";" белгісімен (":" орнына), әдепкі мәні жоқ
+${...} айнымалысы (бос жол мен ескерту) немесе env_file бөлімінің environment
+бөлімімен ауыстырылуы.
+
+Ұпай: 4 сценарий × 8 = 32; қорғау — 12. Барлығы 44.
+
+----------------------------------------------------------------------
+D10-С-03
+----------------------------------------------------------------------
+Фрагмент.
+«Фотогалерея» (gallery) қолданбасы — Python тіліндегі шағын HTTP сервер (образ
+d10/photo-web:1.0) және бөлек база сервері (образ postgres:16-alpine). Қолданба
+іске қосылғанда конфигурация файлын /app/config/secrets.json жолы бойынша
+іздейді (жол образға енгізілген) және журналға шығарады:
+  secret=/app/config/secrets.json      — файл табылды және оқылды
+  secret=not found                     — осы жол бойынша файл табылмады
+Егер файлда қосылу жолы болмаса, қолданба жергілікті деректер файлымен жұмыс
+істейді және оны журналда хабарлайды.
+
+Бастапқы күй. Docker Engine жұмыс істеуде; машинада photo-* аттарымен
+контейнерлер мен желілер жоқ; d10/photo-web:1.0 және postgres:16-alpine
+образдері алдын ала жиналып, жергілікті түрде жатыр. Бос порттар: 8491 және
+8492. `gallery/` каталогы compose-файлдарды және `config/` ішкі каталогы
+empty.json, connection.json және logging.env файлдарын қамтиды.
+
+Файл gallery/docker-compose.yml (ядро):
+```yaml
+services:
+  photo-web:
+    image: d10/photo-web:1.0
+    secrets:
+      - source: photo-db-connection
+        target: /app/config/secrets.json
+    networks:
+      - app-net
+
+networks:
+  app-net:
+```
+
+Файл gallery/docker-compose-dev.yml (override):
+```yaml
+services:
+  photo-web:
+    ports:
+      - "8491:8080"
+    environment:
+      - Photo__DbProvider=Sqlite
+    env_file:
+      - ./config/logging.env
+
+secrets:
+  photo-db-connection:
+    file: ./config/empty.json
+```
+
+Файл gallery/docker-compose-prod.yml (YAML кеңейтулері бар override):
+```yaml
+x-logging: &logging
+  logging:
+    options:
+      max-size: '50m'
+      max-file: '5'
+
+x-labels: &labels
+  app-name: photo-archive
+
+services:
+  photo-web:
+    ports:
+      - "8492:8080"
+    <<: *logging
+    labels:
+      <<: *labels
+      public: web
+
+  photo-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=photos
+      - POSTGRES_USER=photos
+      - POSTGRES_PASSWORD=photos
+    volumes:
+      - photo-db-data:/var/lib/postgresql/data
+    networks:
+      - app-net
+    <<: *logging
+    labels:
+      <<: *labels
+
+networks:
+  app-net:
+    name: photo-prod
+
+volumes:
+  photo-db-data:
+
+secrets:
+  photo-db-connection:
+    file: ./config/connection.json
+```
+
+Файл gallery/config/empty.json:
+```
+{}
+```
+
+Файл gallery/config/connection.json:
+```json
+{
+  "ConnectionStrings": {
+    "PhotoDb": "Server=photo-db;Database=photos;User Id=photos;Password=photos;"
+  }
+}
+```
+
+Файл gallery/config/logging.env:
+```
+Photo__LogLevel=Debug
+```
+
+Тексеру кезінде студент қолдана алатын командалар:
+```
+# ядро мен override-файл біріктірілуінің нәтижесін қарау (ештеңе орнатылмайды):
+docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-prod.yml config
+
+# prod-ортаны орнату:
+docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-prod.yml -p photo-prod up -d
+
+# dev-ортаны орнату:
+docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-dev.yml -p photo-dev up -d
+```
+
+Тапсырыш. Осы файлдар жиыны үшін 4 тексеру сценарийін ойлап табыңыз. Әр
+сценарий үшін көрсетіңіз: бастапқы шарт (қай файл өзгертілді, қай секрет файлы
+жоқ, target ішінде қандай жол көрсетілген, кеңейту қай файлда жарияланған,
+қандай желі атауы тапсырылған), күтілетін нәтиже (контейнер іске қосылады ма,
+қолданба секрет файлының қандай жолын көреді, қолданба журналға не жазады,
+қандай типтегі қате туындайды) және сценарий нені тексереді. Кемінде бір
+сценарий жасырын қатеді ұстауы керек: жоқ секрет файлы, қолданба оқитын жолмен
+сәйкес келмейтін target, ядрода жарияланған да override-файлда қолданылған
+кеңейту немесе екі ортада бірдей желі.
+
+Ұпай: 4 сценарий × 8 = 32; қорғау — 12. Барлығы 44.

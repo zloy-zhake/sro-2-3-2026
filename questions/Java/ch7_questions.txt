@@ -1,0 +1,505 @@
+ch7_questions
+Java тілінде бағдарламалау — устный экзамен, 7-тарау «Better Living in Objectville» (Head First Java, 3rd ed.)
+Задания без ответов. 08.11.2026
+
+======================================================================
+КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+======================================================================
+
+Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+
+----------------------------------------------------------------------
+J07-К-01
+----------------------------------------------------------------------
+
+Бағдарламаны оқыңыз.
+
+class Muzykant {
+  boolean sahnada;
+  void oinau() {
+    System.out.println("Muzykant oinaidy");
+  }
+}
+
+class Dombyrashy extends Muzykant {
+  int ishekSany;
+  void oinau() {
+    System.out.println("Dombyrashy kui tartady");
+  }
+  void kuiShygaru() {
+    System.out.println("jana kui");
+  }
+}
+
+class Barabanshy extends Muzykant {
+  void yrgaqSoqu() {
+    System.out.println("tars-turs");
+  }
+}
+
+public class Sahna {
+  public static void main(String[] args) {
+    Muzykant m = new Dombyrashy();
+    m.sahnada = true;
+    m.oinau();                               // 1-жол
+    Barabanshy b = new Barabanshy();
+    b.sahnada = true;                        // 2-жол
+    b.yrgaqSoqu();
+  }
+}
+
+1. 1-жол «Muzykant oinaidy» шығарады, себебі m айнымалысы Muzykant типті сілтеме ретінде жарияланған. (5 ұпай)
+2. 2-жол компиляцияланады, себебі Barabanshy класы sahnada дана айнымалысын (instance variable) Muzykant базалық класынан (superclass) мұра етеді (inheritance). (5 ұпай)
+3. Barabanshy класындағы yrgaqSoqu() әдісінің ішіне kuiShygaru(); жолын қоссақ, код компиляцияланады, себебі Barabanshy мен Dombyrashy бір базалық класс — Muzykant-тан туындаған. (5 ұпай)
+4. 1-жолдан кейін m.kuiShygaru(); жолын қоссақ, код компиляцияланбайды, себебі m сілтемесінің типі Muzykant, ал Muzykant класында kuiShygaru() әдісі жоқ. (5 ұпай)
+5. Dombyrashy объектісінде бір ғана дана айнымалысы бар — ishekSany, себебі sahnada өрісі Dombyrashy класының ішінде жазылмаған. (4 ұпай)
+
+
+----------------------------------------------------------------------
+J07-К-02
+----------------------------------------------------------------------
+
+Бағдарламаны оқыңыз.
+
+class Qurylgy {
+  public boolean qosu() {
+    System.out.println("Qurylgy qosyldy");
+    return true;
+  }
+  public boolean oshiru() {
+    System.out.println("Qurylgy oshti");
+    return false;
+  }
+}
+
+class Shainek extends Qurylgy {
+  public boolean qosu(String rejim) {                  // A-жол
+    System.out.println("Shainek qosyldy: " + rejim);
+    return true;
+  }
+  public boolean oshiru() {                            // B-жол
+    System.out.println("Shainek oshti");
+    return false;
+  }
+}
+
+public class AsUi {
+  public static void main(String[] args) {
+    Qurylgy q = new Shainek();
+    q.qosu();                                          // C-жол
+    q.oshiru();                                        // D-жол
+  }
+}
+
+1. A-жолдағы qosu(String rejim) әдісі Qurylgy класындағы qosu() әдісін қайта анықтайды (overriding), себебі екі әдістің аты бірдей. (5 ұпай)
+2. C-жол «Qurylgy qosyldy» шығарады, себебі Shainek класында параметрсіз qosu() әдісі жоқ, сондықтан Qurylgy класынан мұра етілген нұсқасы орындалады. (5 ұпай)
+3. B-жолда public сөзін private сөзіне ауыстырсақ, код компиляцияланбайды, себебі қайта анықталған әдістің қолжетімділігі (access level) базалық кластағы (superclass) әдістен төмен бола алмайды. (5 ұпай)
+4. D-жолдан кейін q.qosu("jyldam"); жолын қоссақ, код компиляцияланады, себебі q шын мәнінде Shainek объектісін көрсетеді, ал Shainek класында qosu(String) әдісі бар. (5 ұпай)
+5. B-жолда boolean орнына int жазып, әдіс ішіндегі return false; жолын return 0; деп ауыстырсақ, код компиляцияланбайды, себебі қайта анықталған әдістің қайтару типі (return type) базалық кластағы әдістің қайтару типімен үйлесімді болуы керек. (4 ұпай)
+
+
+----------------------------------------------------------------------
+J07-К-03
+----------------------------------------------------------------------
+
+Бағдарламаны оқыңыз.
+
+class Qaiyq {
+  private int uzyndyq;
+  public void setUzyndyq(int u) {
+    uzyndyq = u;
+  }
+  public int getUzyndyq() {
+    return uzyndyq;
+  }
+  public void jylju() {
+    System.out.print("agyp barady ");
+  }
+}
+
+class Eskekti extends Qaiyq {
+  public void jylju() {
+    System.out.print("eskekpen jyljidy ");
+  }
+}
+
+class Jelkendi extends Qaiyq {
+  public void jelkenKoteru() {
+    System.out.print("jelken koterildi ");
+  }
+}
+
+public class QaiyqTest {
+  public static void main(String[] args) {
+    Qaiyq q1 = new Jelkendi();
+    Eskekti q2 = new Eskekti();
+    q2.setUzyndyq(12);                       // 1-жол
+    q1.jylju();                              // 2-жол
+    q2.jylju();                              // 3-жол
+    System.out.println(q2.getUzyndyq());
+  }
+}
+
+1. 1-жол компиляцияланады, себебі setUzyndyq() — Qaiyq класының public әдісі, ал Eskekti оны мұра етеді (inheritance). (5 ұпай)
+2. Eskekti класына int olshem() { return uzyndyq; } әдісін қоссақ, код компиляцияланады, себебі Eskekti — Qaiyq класының туынды класы (subclass). (5 ұпай)
+3. 2-жол компиляцияланбайды, себебі Jelkendi класында jylju() әдісі жазылмаған. (5 ұпай)
+4. 3-жолдан кейін q1.jelkenKoteru(); жолын қоссақ, код компиляцияланады, себебі q1 Jelkendi объектісін көрсетеді. (5 ұпай)
+5. Qaiyq класындағы jylju() әдісін public final void jylju() деп өзгертсек, код компиляцияланбайды, себебі Eskekti класы final әдісті қайта анықтайды (overriding). (4 ұпай)
+
+
+======================================================================
+ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+======================================================================
+
+Кестедегі «Код» бағанының әр жолы үшін екі бағанды толтырыңыз:
+- «Компиляцияланады ма? Неге?» — «иә» немесе «жоқ» және себебі: қандай ереже бұзылады немесе неге бұл жол заңды (сілтеме типі, IS-A, мұрагерлік (inheritance), қайта анықтау (overriding), қайта жүктеу (overloading));
+- «Не орындалады (не шығады) немесе қандай ерекше жағдай (exception)» — экранға шығатын мәтін (қай кластың әдісі орындалатынын көрсетіңіз) немесе қандай ерекше жағдай туындайды. Ештеңе шықпаса — «ештеңе шықпайды»; ерекше жағдай болмаса — «ерекше жағдай жоқ»; жол компиляцияланбаса — «—».
+Әр жол — 4 ұпай (2 + 2).
+
+----------------------------------------------------------------------
+J07-Ф-01
+----------------------------------------------------------------------
+
+Жолдар main ішінде ретімен орындалады. Компиляцияланбайтын жол кодтан сызылып тасталған деп есептеледі (3-бағанда «—»), келесі жолдар онсыз бағаланады.
+
+class Ata {
+  int san = 5;
+
+  void bir() {
+    System.out.println("Ata bir");
+  }
+  void eki() {
+    System.out.println("Ata eki");
+  }
+  void ush() {
+    System.out.println("Ata ush " + san);
+  }
+}
+
+class Ake extends Ata {
+  void eki() {
+    System.out.println("Ake eki " + (san * 2));
+  }
+  void tort() {
+    System.out.println("Ake tort");
+  }
+}
+
+class Bala extends Ake {
+  void bir() {
+    System.out.println("Bala bir");
+  }
+  void ush() {
+    System.out.println("Bala ush " + (san - 1));
+  }
+}
+
+public class Otbasy {
+  public static void main(String[] args) {
+    Ata a = new Ata();
+    Ake b = new Ake();
+    Bala c = new Bala();
+    Ata a2 = new Bala();
+    Ake b2 = new Bala();
+    // ---- кесте осы жерден басталады ----
+    a2.bir();
+    a2.tort();
+    c.eki();
+    b.ush();
+    Bala k = b2;
+    a = b2;
+    a.san = 9;
+    a.ush();
+  }
+}
+
+| № | Код            | Компиляцияланады ма? Неге? | Не орындалады (не шығады) немесе қандай ерекше жағдай (exception) |
+|---|----------------|----------------------------|------------------------------------------------------------------|
+| 1 | a2.bir();      |                            |                                                                  |
+| 2 | a2.tort();     |                            |                                                                  |
+| 3 | c.eki();       |                            |                                                                  |
+| 4 | b.ush();       |                            |                                                                  |
+| 5 | Bala k = b2;   |                            |                                                                  |
+| 6 | a = b2;        |                            |                                                                  |
+| 7 | a.san = 9;     |                            |                                                                  |
+| 8 | a.ush();       |                            |                                                                  |
+
+----------------------------------------------------------------------
+J07-Ф-02
+----------------------------------------------------------------------
+
+Кестенің әр жолы — Jalmauyz класына (белгіленген орынға) қойылатын бір әдіс нұсқасы. Жолдар бір-біріне тәуелсіз: әр жолда Jalmauyz класында тек осы әдіс тұр деп есептеңіз. 2-бағанда — компиляцияланады ма, және бұл қайта анықтау (overriding), қайта жүктеу (overloading) әлде басқа нәрсе ме; 3-бағанда — осы нұсқа қойылғанда бағдарламаның толық шығысы.
+
+public class QubyjyqTest {
+  public static void main(String[] args) {
+    Qubyjyq[] qq = new Qubyjyq[3];
+    qq[0] = new Aidahar();
+    qq[1] = new Qubyjyq();
+    qq[2] = new Jalmauyz();
+    for (int i = 0; i < qq.length; i++) {
+      qq[i].qorqyt(i);
+    }
+  }
+}
+
+class Qubyjyq {
+  public boolean qorqyt(int d) {
+    System.out.println("uu-uu " + d);
+    return true;
+  }
+}
+
+class Jalmauyz extends Qubyjyq {
+  // <-- осы жерге кестедегі нұсқа қойылады
+}
+
+class Aidahar extends Qubyjyq {
+  public boolean qorqyt(int kush) {
+    System.out.println("ot " + (kush + 1));
+    return true;
+  }
+}
+
+| № | Код (Jalmauyz класына қойылады) | Компиляцияланады ма? Неге? | Не орындалады (не шығады) немесе қандай ерекше жағдай (exception) |
+|---|---------------------------------|----------------------------|------------------------------------------------------------------|
+| 1 | public boolean qorqyt(int z) { System.out.println("jalmauyz " + z); return false; } | | |
+| 2 | public boolean qorqyt(long x) { System.out.println("jalmauyz " + x); return false; } | | |
+| 3 | public int qorqyt(int x) { System.out.println("jalmauyz " + x); return 1; } | | |
+| 4 | public boolean qorqyt(int x) { super.qorqyt(x); System.out.println("jalmauyz " + x); return false; } | | |
+| 5 | private boolean qorqyt(int x) { System.out.println("jalmauyz " + x); return false; } | | |
+| 6 | public boolean shoshyt(int x) { System.out.println("jalmauyz " + x); return false; } | | |
+| 7 | private int qorqyt(String s) { System.out.println("jalmauyz " + s); return 0; } | | |
+| 8 | public boolean qorqyt(int x) { System.out.println("jalmauyz " + (x * 10)); return super.qorqyt(x + 1); } | | |
+
+----------------------------------------------------------------------
+J07-Ф-03
+----------------------------------------------------------------------
+
+Жолдар main ішінде ретімен орындалады. Компиляцияланбайтын жол кодтан сызылып тасталған деп есептеледі (3-бағанда «—»), келесі жолдар онсыз бағаланады.
+
+class Januar {
+  void dybys() {
+    System.out.println("januar dybysy");
+  }
+  void jeu() {
+    System.out.println("januar jeidi");
+  }
+}
+
+class It extends Januar {
+  void dybys() {
+    System.out.println("hav-hav");
+  }
+}
+
+class Mysyq extends Januar {
+  void jeu() {
+    System.out.println("mysyq sut ishedi");
+  }
+}
+
+class Kitap {
+  int bet = 100;
+}
+
+class Dariger {
+  void ekpe(Januar j) {
+    j.dybys();
+  }
+}
+
+public class Emhana {
+  public static void main(String[] args) {
+    Januar[] janlar = new Januar[3];
+    Dariger d = new Dariger();
+    // ---- кесте осы жерден басталады ----
+    janlar[0] = new It();
+    janlar[2] = new Kitap();
+    janlar[1] = new Mysyq();
+    d.ekpe(janlar[0]);
+    d.ekpe(new Mysyq());
+    d.ekpe(janlar);
+    for (Januar j : janlar) { d.ekpe(j); }
+    d.ekpe(new It());
+  }
+}
+
+| № | Код                                      | Компиляцияланады ма? Неге? | Не орындалады (не шығады) немесе қандай ерекше жағдай (exception) |
+|---|------------------------------------------|----------------------------|------------------------------------------------------------------|
+| 1 | janlar[0] = new It();                    |                            |                                                                  |
+| 2 | janlar[2] = new Kitap();                 |                            |                                                                  |
+| 3 | janlar[1] = new Mysyq();                 |                            |                                                                  |
+| 4 | d.ekpe(janlar[0]);                       |                            |                                                                  |
+| 5 | d.ekpe(new Mysyq());                     |                            |                                                                  |
+| 6 | d.ekpe(janlar);                          |                            |                                                                  |
+| 7 | for (Januar j : janlar) { d.ekpe(j); }   |                            |                                                                  |
+| 8 | d.ekpe(new It());                        |                            |                                                                  |
+
+
+======================================================================
+ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+======================================================================
+
+Кодтағы ? белгісінің орнына қойылатын мән (объектінің класы, айнымалының типі немесе мәні) — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+1. кіріс мәні — әр ? орнына қандай мән қойылады;
+2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек;
+3. тест нені тексереді — қай класстың әдісі орындалады (қайта анықталған (overriding), мұраға алынған немесе базалық класс (superclass) нұсқасы), қай қайта жүктелген (overloading) әдіс таңдалады, қай шекара (boundary) тексеріледі.
+
+Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+
+----------------------------------------------------------------------
+J07-С-01
+----------------------------------------------------------------------
+
+class Qubyjyq {
+  String qorqyt(double dareje) {
+    if (dareje >= 5) {
+      return "arrrgh";
+    }
+    return "shhh";
+  }
+}
+
+class Vampir extends Qubyjyq {
+  String qorqyt(int dareje) {
+    if (dareje >= 3) {
+      return "tistedi";
+    }
+    return "shhh";
+  }
+}
+
+class Aidahar extends Qubyjyq {
+  String qorqyt(double dareje) {
+    return "ot";
+  }
+}
+
+class Zombi extends Qubyjyq {
+}
+
+public class QubyjyqTest {
+  public static void main(String[] args) {
+    Qubyjyq[] qubyjyqtar = new Qubyjyq[4];
+    qubyjyqtar[0] = new Vampir();
+    qubyjyqtar[1] = new Aidahar();
+    qubyjyqtar[2] = new Zombi();
+    qubyjyqtar[3] = new Qubyjyq();
+    int nomer = ?;                 // тест кірісі: құбыжықтың нөмірі (0–3)
+    int dareje = ?;                // тест кірісі: қорқыту дәрежесі (0–10)
+    System.out.println(qubyjyqtar[nomer].qorqyt(dareje));
+  }
+}
+
+Талап: nomer — 0-ден 3-ке дейін, dareje — 0-ден 10-ға дейінгі бүтін сан. Бағдарлама таңдалған құбыжықтың қорқыту (frighten) нәтижесін бір жолмен шығарады: Vampir — дәреже 3 немесе одан жоғары болса «tistedi», әйтпесе «shhh»; Aidahar — кез келген дәрежеде «ot»; Zombi және жай Qubyjyq — дәреже 5 немесе одан жоғары болса «arrrgh», әйтпесе «shhh».
+
+
+----------------------------------------------------------------------
+J07-С-02
+----------------------------------------------------------------------
+
+class Januar {
+  String dybys() {
+    return "...";
+  }
+
+  String ekpeler() {
+    return "negizgi";              // барлық жануарға — негізгі екпе
+  }
+}
+
+class Ittes extends Januar {       // иттестер тұқымдасы (Canine)
+  String dybys() {
+    return "ulu";
+  }
+}
+
+class It extends Ittes {
+  String dybys() {
+    return "hav";
+  }
+
+  String ekpeler() {
+    return super.ekpeler() + "+keshendi";
+  }
+}
+
+class Qasqyr extends Ittes {
+  String ekpeler() {
+    return super.ekpeler() + "+kutyrma";
+  }
+}
+
+class Tulki extends Ittes {
+}
+
+class Begemot extends Januar {
+  String dybys() {
+    return "gru";
+  }
+}
+
+class Maldariger {
+  void ekpeSal(Januar j) {
+    System.out.println(j.dybys() + ": " + j.ekpeler());
+  }
+}
+
+public class MaldarigerTest {
+  public static void main(String[] args) {
+    Maldariger m = new Maldariger();
+    Januar j = new ?();            // тест кірісі: жануардың класы
+    m.ekpeSal(j);
+  }
+}
+
+Талап: ? орнына It, Qasqyr, Tulki, Begemot немесе Januar қойылады. Бағдарлама бір жол шығарады: «дыбыс: екпелер». Дыбыстар: It — «hav», Qasqyr мен Tulki — «ulu», Begemot — «gru», Januar — «...». Екпелер: барлық жануар «negizgi» алады; иттестер тұқымдасы (Ittes: It, Qasqyr, Tulki) оған қоса «+kutyrma» алады; It бұған қоса «+keshendi» алады. Мысалы, иттестің кез келген жаңа түрі «ulu: negizgi+kutyrma» шығаруы керек.
+
+
+----------------------------------------------------------------------
+J07-С-03
+----------------------------------------------------------------------
+
+class Tirkeu {
+  String id = "jok";
+
+  int qos(int a, int b) {
+    return a + b;
+  }
+
+  double qos(double a, double b) {
+    return a + b;
+  }
+
+  void setId(String jana) {
+    if (jana.length() == 4) {      // ID — дәл 4 таңба
+      id = jana;
+    } else {
+      id = "qate";
+    }
+  }
+
+  void setId(int nomer) {
+    if (nomer > 1000) {
+      String s = "" + nomer;
+      setId(s);
+    } else {
+      id = "qate";
+    }
+  }
+}
+
+public class TirkeuTest {
+  public static void main(String[] args) {
+    Tirkeu t = new Tirkeu();
+    int nomer = ?;                 // тест кірісі: ID нөмірі
+    t.setId(nomer);
+    System.out.println(t.id);
+    ? x = ?;                       // тест кірісі: x-тің типі (int немесе double) және мәні
+    ? y = ?;                       // тест кірісі: y-тің типі (int немесе double) және мәні
+    System.out.println(t.qos(x, y));
+  }
+}
+
+Талап: бағдарлама екі жол шығарады. 1-жол: ID — 1000-нан 9999-ға дейінгі бүтін сан (екі шеткі мән де кіреді); nomer осы аралықта болса, id өрісіне осы сан жазылады және ол шығады (мысалы, 1234), әйтпесе «qate» шығады. 2-жол: x пен y қосындысы; екеуі де int болса — нәтиже int (мысалы, 7), кемінде біреуі double болса — нәтиже double (мысалы, 7.0).
+

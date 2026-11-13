@@ -1,0 +1,446 @@
+ch9_questions
+Основы функционального программирования (Основы языка F#) — устный экзамен, глава 9 «Building rich domains» (Isaac Abraham, F# in Action)
+Задания без ответов. 09.11.2026
+
+======================================================================
+КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+======================================================================
+
+В каждом задании дан фрагмент кода на F# и 5 утверждений о нём. Для каждого утверждения укажите ВЕРНО или НЕВЕРНО и объясните почему: назовите правило языка и покажите, как оно действует в этом коде.
+Баллы: утверждения 1–4 — по 5 баллов (1 балл за «верно/неверно» + 4 балла за обоснование), утверждение 5 — 4 балла (1 + 3). Всего 24 балла.
+
+----------------------------------------------------------------------
+F09-К-01
+----------------------------------------------------------------------
+
+Прочитайте код. Код компилируется без ошибок.
+
+// заказ в интернет-магазине
+type Order = { Code : string; Discount : int option }
+
+let orderA = { Code = "A-17"; Discount = Some 15 }
+let orderB = { Code = "B-02"; Discount = None }
+
+let getDiscount (order : Order) = order.Discount
+
+let maybeOrder : Order option = Some orderA
+
+let viaMap = maybeOrder |> Option.map getDiscount
+let viaBind = maybeOrder |> Option.bind getDiscount
+
+let describe (order : Order) =
+    match order.Discount with
+    | Some percent -> $"Скидка {percent} процентов"
+    | None -> "Без скидки"
+
+1. Значение viaMap имеет тип int option и равно Some 15. (5 баллов)
+2. Значение viaBind имеет тип int option и равно Some 15. (5 баллов)
+3. Если добавить в конец кода строку
+   let total = orderA.Discount + 100
+   код скомпилируется и total будет равно 115. (5 баллов)
+4. Если в функции describe удалить строку «| None -> "Без скидки"», код перестанет компилироваться. (5 баллов)
+5. Вызов describe orderB возвращает строку "Без скидки". (4 балла)
+
+----------------------------------------------------------------------
+F09-К-02
+----------------------------------------------------------------------
+
+Прочитайте код. Код компилируется без ошибок. raw.Id[1..] — срез строки с позиции 1 до конца ("S12"[1..] = "12").
+
+type StudentId = StudentId of int
+type Faculty = Local | Exchange of string
+
+// сырые данные из анкеты
+type RawStudent = { Id : string; Faculty : string }
+
+let validateStudent (raw : RawStudent) =
+    let idResult =
+        if raw.Id.StartsWith "S" then Ok (StudentId (int raw.Id[1..]))
+        else Error $"Неверный номер {raw.Id}"
+    let facultyResult =
+        match raw.Faculty with
+        | "" -> Error "Факультет не указан"
+        | "KZ" -> Ok Local
+        | other -> Ok (Exchange other)
+    match idResult, facultyResult with
+    | Ok id, Ok faculty -> Ok (id, faculty)
+    | Error err, _ | _, Error err -> Error err
+
+1. Вызов validateStudent { Id = "X5"; Faculty = "" } вернёт Error, в котором записаны обе ошибки: и про неверный номер, и про пустой факультет. (5 баллов)
+2. Если в idResult заменить строку
+   else Error $"Неверный номер {raw.Id}"
+   на
+   else Error 404
+   код не скомпилируется. (5 баллов)
+3. Вызов validateStudent { Id = "Sabc"; Faculty = "KZ" } вернёт Error "Неверный номер Sabc". (5 баллов)
+4. Вызов validateStudent { Id = "S7"; Faculty = "kz" } вернёт Ok (StudentId 7, Exchange "kz"). (5 баллов)
+5. Вызов validateStudent { Id = "S12"; Faculty = "KZ" } вернёт Ok (StudentId 12, Local). (4 балла)
+
+----------------------------------------------------------------------
+F09-К-03
+----------------------------------------------------------------------
+
+Прочитайте код. Код компилируется без ошибок. Int32.TryParse возвращает кортеж: (true, число), если строка разобрана, и (false, 0), если нет.
+
+#r "nuget: FsToolkit.ErrorHandling, 2.13.0"
+open System
+open FsToolkit.ErrorHandling
+
+let total (price : int) (count : int) (bonus : int) : int = price * count - bonus
+
+let tryParseInt (text : string) =
+    match Int32.TryParse text with
+    | true, value -> Some value
+    | false, _ -> None
+
+let order1 : int option =
+    match tryParseInt "40", tryParseInt "3", tryParseInt "5" with
+    | Some p, Some c, Some b -> Some (total p c b)
+    | _ -> None
+
+let order2 =
+    option {
+        let! price = tryParseInt "25"
+        let! count = tryParseInt "два"
+        let! bonus = tryParseInt "10"
+        return total price count bonus
+    }
+
+1. Значение order1 равно Some 115. (5 баллов)
+2. Внутри блока option { … } имя price имеет тип int option. (5 баллов)
+3. Значение order2 равно None, причём вызов tryParseInt "10" вообще не выполняется. (5 баллов)
+4. Выражение option { … } — часть стандартной библиотеки F# (FSharp.Core), поэтому строки #r "nuget: …" и open FsToolkit.ErrorHandling можно удалить, и код по-прежнему скомпилируется. (5 баллов)
+5. Вызов tryParseInt "17" возвращает Some 17, а вызов tryParseInt "x" возвращает None. (4 балла)
+
+
+======================================================================
+ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+======================================================================
+
+Проследите выполнение кода по строкам и заполните таблицу трассировки. Каждая строка таблицы — 4 балла (2 за столбец «Тип» + 2 за столбец «Значение»), всего 8 строк × 4 = 32 балла.
+- Строки кода выполняются по порядку сверху вниз; первый столбец таблицы («Код или шаг») уже заполнен. Многострочное определение в таблице сокращено «…» — полный код дан над таблицей.
+- «Тип» — тип имени, которое связывает строка, в нотации FSI: x: int option; r: Result<int,string>; f: a: int -> string. Вложенные опции пишутся полностью: int option option.
+- «Значение» — значение имени: Some 5 / None / Some (Some 5) / Ok 10 / Error "текст"; запись — { Name = "Aru"; Age = 20 }; строка — в кавычках. Для функции напишите «функция».
+- Если строка не компилируется, в столбце «Тип» напишите «ошибка компиляции», а в столбце «Значение» — причину. Такая строка считается удалённой и на следующие строки не влияет.
+
+----------------------------------------------------------------------
+F09-Ф-01
+----------------------------------------------------------------------
+
+// Option.map и Option.bind
+type Student = { Name: string; Group: int option }
+
+let classify (g: int) = if g < 300 then "junior" else "senior"
+let getGroup (s: Student) = s.Group
+
+let aru = Some { Name = "Aru"; Group = Some 312 }
+let dana = Some { Name = "Dana"; Group = None }
+
+let g1 = aru |> Option.map getGroup
+let g2 = aru |> Option.bind getGroup
+let g3 = dana |> Option.bind getGroup
+let c1 = g2 |> Option.map classify
+let c2 = g1 |> Option.map classify
+let toLabel = getGroup >> Option.map classify
+let c3 = dana |> Option.map toLabel
+let label =
+    match c1 with
+    | Some text -> text
+    | None -> "unknown"
+
+Заполните столбцы «Тип» и «Значение» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+| № | Код или шаг                                   | Тип                    | Значение                   |
+|---|-----------------------------------------------|------------------------|----------------------------|
+| 1 | let g1 = aru |> Option.map getGroup           |                        |                            |
+| 2 | let g2 = aru |> Option.bind getGroup          |                        |                            |
+| 3 | let g3 = dana |> Option.bind getGroup         |                        |                            |
+| 4 | let c1 = g2 |> Option.map classify            |                        |                            |
+| 5 | let c2 = g1 |> Option.map classify            |                        |                            |
+| 6 | let toLabel = getGroup >> Option.map classify |                        |                            |
+| 7 | let c3 = dana |> Option.map toLabel           |                        |                            |
+| 8 | let label = match c1 with … (4 строки)        |                        |                            |
+
+----------------------------------------------------------------------
+F09-Ф-02
+----------------------------------------------------------------------
+
+#r "nuget: FsToolkit.ErrorHandling, 2.13.0"
+open System
+open FsToolkit.ErrorHandling
+
+let calc (a: int) (b: int) (c: int) : int = (a - b) * c
+
+let tryParseNumber (text: string) =
+    match Int32.TryParse text with
+    | true, number -> Some number
+    | false, _ -> None
+
+let p1 = tryParseNumber "12"
+let p2 = tryParseNumber "3.5"
+let p3 = tryParseNumber "-4"
+let fromTuple =
+    match p1, tryParseNumber "5", p3 with
+    | Some a, Some b, Some c -> Some (calc a b c)
+    | _ -> None
+let fromCe =
+    option {
+        let! a = tryParseNumber "20"
+        let! b = p1
+        return calc a b 3
+    }
+let stopped =
+    option {
+        let! a = p3
+        let! b = p2
+        return calc a b 2
+    }
+let direct = calc p1 2 3
+let nested =
+    option {
+        let! a = p1
+        return p3
+    }
+
+Заполните столбцы «Тип» и «Значение» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+| № | Код или шаг                                                        | Тип                    | Значение                   |
+|---|--------------------------------------------------------------------|------------------------|----------------------------|
+| 1 | let p1 = tryParseNumber "12"                                       |                        |                            |
+| 2 | let p2 = tryParseNumber "3.5"                                      |                        |                            |
+| 3 | let p3 = tryParseNumber "-4"                                       |                        |                            |
+| 4 | let fromTuple = match p1, tryParseNumber "5", p3 with … (4 строки) |                        |                            |
+| 5 | let fromCe = option { … } (6 строк)                                |                        |                            |
+| 6 | let stopped = option { … } (6 строк)                               |                        |                            |
+| 7 | let direct = calc p1 2 3                                           |                        |                            |
+| 8 | let nested = option { … } (5 строк)                                |                        |                            |
+
+----------------------------------------------------------------------
+F09-Ф-03
+----------------------------------------------------------------------
+
+type RawStudent = { RawId: string; RawCity: string }
+type StudentId = StudentId of int
+type Home = Local | Visiting of string
+type Student = { Id: StudentId; Home: Home }
+
+let validateStudent (raw: RawStudent) =
+    let studentId =
+        if raw.RawId.StartsWith "S" then
+            Ok (StudentId (int raw.RawId[1..]))
+        else
+            Error $"Bad id '{raw.RawId}'"
+    let home =
+        match raw.RawCity with
+        | "" -> Error "No city"
+        | "Almaty" -> Ok Local
+        | other -> Ok (Visiting other)
+    match studentId, home with
+    | Ok sid, Ok h -> Ok { Id = sid; Home = h }
+    | Error err, _
+    | _, Error err -> Error err
+
+let r1 = validateStudent { RawId = "S15"; RawCity = "Almaty" }
+let r2 = validateStudent { RawId = "S007"; RawCity = "Taraz" }
+let r3 = validateStudent { RawId = "S3"; RawCity = "" }
+let r4 = validateStudent { RawId = "A1"; RawCity = "" }
+let r5 = validateStudent { RawId = "S8"; RawCity = "almaty" }
+let homeOnly = r2 |> Result.map (fun s -> s.Home)
+let first: Student = r1
+
+Заполните столбцы «Тип» и «Значение» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+| № | Код или шаг                                                    | Тип                    | Значение                   |
+|---|----------------------------------------------------------------|------------------------|----------------------------|
+| 1 | let validateStudent (raw: RawStudent) = … (15 строк)           |                        |                            |
+| 2 | let r1 = validateStudent { RawId = "S15"; RawCity = "Almaty" } |                        |                            |
+| 3 | let r2 = validateStudent { RawId = "S007"; RawCity = "Taraz" } |                        |                            |
+| 4 | let r3 = validateStudent { RawId = "S3"; RawCity = "" }        |                        |                            |
+| 5 | let r4 = validateStudent { RawId = "A1"; RawCity = "" }        |                        |                            |
+| 6 | let r5 = validateStudent { RawId = "S8"; RawCity = "almaty" }  |                        |                            |
+| 7 | let homeOnly = r2 |> Result.map (fun s -> s.Home)              |                        |                            |
+| 8 | let first: Student = r1                                        |                        |                            |
+
+
+======================================================================
+СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+======================================================================
+
+Дан фрагмент кода с функцией и требование (requirement) к ней. Придумайте 4 ТЕСТА (test cases). Для каждого теста запишите:
+1. входные данные — с какими аргументами вызывается функция;
+2. ожидаемый результат (expected result) — что функция должна вернуть ПО ТРЕБОВАНИЮ;
+3. что проверяет тест — какой путь выполнения (path), ветку (branch), случай (Some / None, Ok / Error) или границу (boundary).
+
+Тесты должны проверять разные случаи. Если вы нашли тест, на котором функция не выполняет требование, укажите это и объясните почему.
+
+Баллы: 4 теста по 8 баллов (входные данные — 2, ожидаемый результат — 3, что проверяет — 3) = 32 балла; защита (ответы на вопросы экзаменатора) — 12 баллов. Итого 44 балла.
+
+----------------------------------------------------------------------
+F09-С-01
+----------------------------------------------------------------------
+
+type RawStudent =
+    {
+        StudentId : string
+        City : string
+    }
+
+type Location =
+    | Local
+    | Visiting of string
+
+type Student =
+    {
+        Id : int
+        Location : Location
+    }
+
+// Проверяет сырые данные студента (raw data)
+let validateStudent (raw:RawStudent) =
+    let studentId =
+        if raw.StudentId.StartsWith "S" then
+            Ok (int raw.StudentId[1..])
+        else
+            Error $"Invalid student id '{raw.StudentId}'."
+
+    let location =
+        match raw.City with
+        | "" -> Error "No city supplied"
+        | "Almaty" -> Ok Local
+        | other -> Ok (Visiting other)
+
+    match studentId, location with
+    | Ok studentId, Ok location ->
+        Ok { Id = studentId; Location = location }
+    | Error err, _
+    | _, Error err ->
+        Error err
+
+Требование (requirement): функция validateStudent получает сырые данные студента (запись RawStudent) и возвращает Result:
+- StudentId правильный, если это буква S (заглавная), за которой идут одна или несколько цифр (например, "S42", "S007"); номер студента — это число из этих цифр ("S007" → 7). Любой другой StudentId — ошибка Error "Invalid student id '<StudentId>'.";
+- City = "" (пустая строка) — ошибка Error "No city supplied"; City = "Almaty" (точно так написанный) — Local; любой другой город — Visiting <город>;
+- если оба поля правильные — Ok { Id = номер; Location = … };
+- если ошибок две — возвращается ошибка идентификатора (первая).
+Функция НИКОГДА не должна завершаться исключением (exception): все неправильные данные дают Error.
+
+Входные данные теста — запись RawStudent, например { StudentId = "S42"; City = "Almaty" }. Ожидаемый результат — Ok { Id = …; Location = … } или Error "…".
+
+Тест 1
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 2
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 3
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 4
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+----------------------------------------------------------------------
+F09-С-02
+----------------------------------------------------------------------
+
+#r "nuget:FSToolkit.ErrorHandling, 2.13.0"
+open FsToolkit.ErrorHandling
+open System
+
+// Разбирает строку в целое число
+let tryParseNumber (text:string) =
+    match Int32.TryParse text with
+    | true, number -> Some number
+    | false, _ -> None
+
+// Сумма заказа: цена × количество − скидка
+let orderTotal (priceText:string) (qtyText:string) (discountText:string) =
+    option {
+        let! price = tryParseNumber priceText
+        let! qty = tryParseNumber qtyText
+        let! discount = tryParseNumber discountText
+        return price * qty - discount
+    }
+
+Справка: Int32.TryParse в F# возвращает кортеж (tuple) bool * int. Если строка — целое число без пробелов (например, "42" или "-5"), результат (true, 42) / (true, -5); иначе (например, "abc", "", "2.5") — (false, 0). В тестах используйте строки без пробелов. Строки #r и open подключают пакет FsToolkit.ErrorHandling с выражением option { } (computation expression).
+
+Требование (requirement): функция orderTotal получает три строки из формы заказа — цену, количество и скидку — и возвращает int option:
+- если цена и количество — целые числа, результат Some (цена × количество − скидка);
+- скидка необязательна: пустая строка "" означает «скидки нет» (скидка 0);
+- если цена, количество или непустая скидка не являются целым числом — None.
+В тестах цена и количество не отрицательные, а скидка не больше, чем цена × количество.
+
+Входные данные теста — три строки, например orderTotal "500" "3" "100".
+
+Тест 1
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 2
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 3
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 4
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+----------------------------------------------------------------------
+F09-С-03
+----------------------------------------------------------------------
+
+open System.IO
+
+// Возвращает текст файла, если файл существует
+let tryReadText (fileName:string) =
+    if File.Exists fileName then
+        Some (File.ReadAllText fileName)
+    else
+        None
+
+// Считает слова в тексте
+let wordCount (text:string) =
+    text.Split ' ' |> Array.length
+
+// Считает слова в файле
+let wordsInFile = tryReadText >> Option.map wordCount
+
+Требование (requirement): функция wordsInFile получает имя файла и возвращает int option:
+- файла нет — None;
+- файл есть — Some n, где n — количество слов в его тексте. Слова разделяются одним или несколькими пробелами; пробелы в начале и в конце текста слов не добавляют; файл без слов (пустой или только из пробелов) — Some 0.
+Текст файла записан в одну строку (без переводов строки).
+
+Входные данные теста — имя файла и его содержимое, например «файл a.txt существует, текст "one two"» или «файла b.txt нет». Ожидаемый результат — Some n или None.
+
+Тест 1
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 2
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 3
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________
+
+Тест 4
+  Входные данные: ______________________________________________
+  Ожидаемый результат: _________________________________________
+  Что проверяет: _______________________________________________

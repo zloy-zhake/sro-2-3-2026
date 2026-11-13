@@ -1,0 +1,1131 @@
+ch9_questions_kz
+Корпоративтік АЖ-ды ОБ талдау мен жобалаудың заманауи технологиялары (Docker модулі) — ауызша емтихан, 9-тарау «Adding observability with containerized monitoring» (Stoneman, Learn Docker in a Month of Lunches, 2nd ed.)
+Жауапсыз тапсырмалар. 10.11.2026
+
+======================================================================
+КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+======================================================================
+Студентке нұсқаулық.
+Әр сұраққа фрагмент берілген: Dockerfile, Docker Compose файлы
+(docker-compose.yml), Prometheus (prometheus.yml) немесе Grafana
+баптауы (configuration), Python тіліндегі қолданба коды, /metrics
+нүктесінің (endpoint) шығысы, образдар мен бастапқы күйдің
+сипаттамасы, Docker және Docker Compose командалары. Фрагменттен кейін
+осы фрагмент туралы 5 тұжырым берілген. Барлық командалар Linux
+орнатылған компьютерде орындалады; Docker Compose Docker CLI-ге
+кіріктірілген (docker compose командасы).
+Анықтама (төмендегілер кітапта жоқ немесе қазіргі нұсқаларда
+өзгерген):
+- Python қолданбаларында метрикаларды (metrics) prometheus_client
+  клиенттік кітапханасы жинайды:
+  Counter(атауы, сипаттамасы, [белгілер]) — санауыш (counter); оның
+  тек inc(n) әдісі бар (n >= 0, әдепкі бойынша 1);
+  Gauge(атауы, сипаттамасы) — өлшеуіш (gauge); оның inc(), dec() және
+  set(мән) әдістері бар;
+  .labels(code="200") белгінің (label) осы мәні бар қатарды таңдайды;
+  generate_latest() /metrics нүктесі үшін барлық метрикалардың
+  мәтінін Prometheus форматында қайтарады; мәндер бөлшек сандар
+  түрінде басылады (мысалы, 9.0);
+- prometheus_client кітапханасы Python орындау ортасының (runtime)
+  метрикаларын өзі қосады, мысалы process_resident_memory_bytes —
+  қолданба процесі алып отырған жады;
+- нысанадан (target) жиналған әр қатарға Prometheus job белгісін
+  (prometheus.yml-дағы job_name мәні) және instance белгісін (нысананың
+  хост:порт түріндегі мекенжайы) қосады;
+- dns_sd_configs DNS сұрауын мезгіл-мезгіл қайталайды (әдепкі бойынша
+  әр 30 секунд сайын);
+- Prometheus 3.x нұсқасында Graph беті Query деп, ал Status → Targets
+  мәзір тармағы Status → Target health деп аталады;
+- Grafana-ның ресми образында GF_PATHS_PROVISIONING орта айнымалысы
+  /etc/grafana/provisioning мәніне тең.
+Әр тұжырымға «дұрыс» немесе «дұрыс емес» деп жазып, жауабыңызды
+негіздеңіз: мұнда Docker-дің, Docker Compose-тың, Prometheus-тың немесе
+Grafana-ның қандай ережесі әрекет етеді және фрагменттегі нақты не
+соны көрсетеді. Дұрыс емес тұжырым үшін шын мәнінде қалай болатынын
+айтыңыз.
+Бағалау: 1–4 тұжырымдар — әрқайсысы 5 ұпай («дұрыс/дұрыс емес» үшін
+1 ұпай, негіздеме үшін 4 ұпай); 5-тұжырым — 4 ұпай (1 + 3).
+Негіздемесіз «дұрыс/дұрыс емес» жауабы тек 1 ұпаймен бағаланады.
+Сұрақ бойынша барлығы — 24 ұпай.
+
+----------------------------------------------------------------------
+D09-К-01
+----------------------------------------------------------------------
+Фрагмент.
+Linux және Docker орнатылған компьютер. /home/student/tickets-web
+каталогында app.py және Dockerfile файлдары бар.
+
+app.py файлы:
+
+import time
+from flask import Flask, Response, request
+from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+app = Flask(__name__)
+
+# қолданбаның өз метрикалары
+tickets_sold = Counter("tickets_sold_total", "Tickets sold")
+buy_requests = Counter("buy_requests_total", "Requests to /buy", ["code"])
+buy_in_flight = Gauge("buy_in_flight", "Requests to /buy in progress")
+
+
+@app.route("/buy")
+def buy():
+    buy_in_flight.inc()
+    try:
+        count = int(request.args.get("count", "1"))
+        if count > 5:
+            buy_requests.labels(code="400").inc()
+            return "too many tickets\n", 400
+        time.sleep(3)  # төлемді имитациялау
+        tickets_sold.inc(count)
+        buy_requests.labels(code="200").inc()
+        return "ok\n"
+    finally:
+        buy_in_flight.dec()
+
+
+@app.route("/metrics")
+def metrics():
+    return Response(generate_latest(), content_type=CONTENT_TYPE_LATEST)
+
+
+app.run(host="0.0.0.0", port=5000)
+
+Dockerfile файлы:
+
+FROM python:3.12-slim
+WORKDIR /app
+RUN pip install flask prometheus_client
+COPY app.py .
+EXPOSE 5000
+CMD ["python", "app.py"]
+
+tickets-net желісі бұрыннан жасалған; онда Prometheus контейнері жұмыс
+істейді, ол әр 10 секунд сайын http://tickets-web:5000/metrics
+мекенжайынан метрикаларды тартады (scrape). Хост терминалында
+командалар ретімен орындалды (барлығы сәтті):
+> cd /home/student/tickets-web
+> docker image build -t kz/tickets-web:v1 .
+> docker container run -d --name tickets-web --network tickets-net -p 8090:5000 kz/tickets-web:v1
+
+Содан кейін http://localhost:8090/buy?count=N мекенжайына бірнеше
+сұрау жіберілді (әрқайсысында N — бүтін сан, кейбір сұраулар бір
+мезгілде). /buy-ге тағы бір сұрау өңделіп жатқанда
+http://localhost:8090/metrics мекенжайы ашылды. Жауаптың фрагменті
+(*_created жолдары және python_*, process_* метрикалары алынып
+тасталған):
+
+# HELP tickets_sold_total Tickets sold
+# TYPE tickets_sold_total counter
+tickets_sold_total 9.0
+# HELP buy_requests_total Requests to /buy
+# TYPE buy_requests_total counter
+buy_requests_total{code="200"} 4.0
+buy_requests_total{code="400"} 2.0
+# HELP buy_in_flight Requests to /buy in progress
+# TYPE buy_in_flight gauge
+buy_in_flight 1.0
+
+Әр тұжырымды осы күйден бастап бөлек қарастырыңыз.
+
+Тапсырма. Дұрыс па, дұрыс емес пе және неге?
+1. code белгісі buy_requests_total метрикасын екі бөлек қатарға
+   бөледі. Осы сәтке дейін қолданба /buy-ге 6 сұрауды аяқтады, оның
+   2-еуі 400 кодымен қабылданбады; Prometheus-та аяқталған барлық
+   сұраулардың санын sum(buy_requests_total) without(code) сұрауы
+   береді.                                                         (5 ұпай)
+2. Билеттердің қайтарылуын есепке алу үшін tickets_sold.dec()
+   шақыратын /refund маршрутын қосу жеткілікті; сонда
+   tickets_sold_total қайтарылғандарын шегергендегі сатылған билеттер
+   санын көрсетеді.                                                (5 ұпай)
+3. Әр тарту кезінде Prometheus өзіндегі tickets_sold_total ескі мәнін
+   жаңасымен ауыстырады, сондықтан Prometheus-та тек сатылған
+   билеттердің ағымдағы санын көруге болады, ал бір күндегі сатылым
+   графигін құру мүмкін емес.                                      (5 ұпай)
+4. docker container restart tickets-web командасынан кейін (одан кейін
+   /buy-ге жаңа сұраулар болған жоқ) http://localhost:8090/metrics
+   мекенжайы 9.0 емес, tickets_sold_total 0.0 көрсетеді.           (5 ұпай)
+5. buy_in_flight Counter емес, Gauge ретінде жарияланған, өйткені оның
+   мәні әрі өсуі (сұраудың басында inc()), әрі кемуі (сұрау
+   аяқталғанда finally блогында dec()) керек.                      (4 ұпай)
+
+----------------------------------------------------------------------
+D09-К-02
+----------------------------------------------------------------------
+Фрагмент.
+Linux және Docker орнатылған компьютер. Билет сату қолданбасы үш
+қызметтен (service) тұрады; барлық образдар компьютерде бар:
+- kz/tickets-web:v1 — билет сату сайты (Flask), 5000 портын тыңдайды.
+  Әр сатып алу кезінде ол http://tickets-worker:5000/pay шақырады және
+  tickets_sold_total санауышын арттырады. Метрикаларды /metrics
+  мекенжайы бойынша береді;
+- kz/tickets-worker:v1 — төлем қызметі (Flask), 5000 портын тыңдайды,
+  /pay және /metrics маршруттары бар; әр төлем кезінде
+  payments_processed_total санауышын арттырады;
+- kz/tickets-prometheus:v1 — Prometheus-тың ресми образынан жиналған,
+  оған prometheus.yml файлы (төменде) /etc/prometheus/prometheus.yml
+  ретінде көшірілген; Prometheus веб-интерфейсі — 9090 порты.
+
+prometheus.yml файлы:
+
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "tickets-web"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["tickets-web:5000"]
+
+  - job_name: "tickets-worker"
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - tickets-worker
+        type: A
+        port: 5000
+
+/home/student/tickets каталогында docker-compose.yml файлы бар:
+
+services:
+  tickets-web:
+    image: kz/tickets-web:v1
+    ports:
+      - "8090:5000"
+    networks:
+      - tickets-net
+
+  tickets-worker:
+    image: kz/tickets-worker:v1
+    networks:
+      - tickets-net
+
+  prometheus:
+    image: kz/tickets-prometheus:v1
+    ports:
+      - "9090:9090"
+    networks:
+      - tickets-net
+
+networks:
+  tickets-net:
+
+Компьютерде бұл қолданбаның контейнерлері әлі жоқ. Хост терминалында,
+/home/student/tickets каталогында команда орындалды (сәтті):
+> docker compose up -d --scale tickets-worker=3
+
+Осыдан кейін http://localhost:8090 сайты арқылы билеттер сатып
+алынады. Әр тұжырымды осы күйден бастап бөлек қарастырыңыз.
+
+Тапсырма. Дұрыс па, дұрыс емес пе және неге?
+1. Іске қосылғаннан кейін бір минуттан соң Prometheus-тың
+   Status → Target health бетінде 4 нысана (target) болады: tickets-web
+   job-ында біреу және tickets-worker job-ында үшеу — әр
+   tickets-worker контейнеріне біреуден.                           (5 ұпай)
+2. Егер tickets-worker job-ында dns_sd_configs-ты
+   targets: ["tickets-worker:5000"] бар static_configs-қа ауыстырып,
+   Prometheus образын қайта жинап, оның контейнерін қайта жасаса,
+   Prometheus бұрынғыдай үш tickets-worker контейнерінің бәрінен
+   метрикаларды жинай береді.                                      (5 ұпай)
+3. Сатып алушы билет сатып алды. Сатып алудан 1 секунд өткенде
+   Prometheus-тағы tickets_sold_total сұрауы ұлғайған мәнді көрсетеді,
+   өйткені қолданба санауышты сатып алу сәтінде арттырды.          (5 ұпай)
+4. Prometheus-тағы payments_processed_total сұрауы instance белгісімен
+   (контейнердің IP-мекенжайы мен порты) ерекшеленетін үш қатарды
+   қайтарады, ал sum(payments_processed_total) without(instance)
+   сұрауы — бір қатарды: үш контейнер бойынша қосындыны.           (5 ұпай)
+5. tickets-web job-ы үшін targets ішінде жарияланған портты —
+   tickets-web:8090 көрсету керек еді, әйтпесе Prometheus сайттың
+   метрикаларын ала алмайды.                                       (4 ұпай)
+
+----------------------------------------------------------------------
+D09-К-03
+----------------------------------------------------------------------
+Фрагмент.
+Linux және Docker орнатылған компьютер. Хосттың /etc/docker/daemon.json
+файлында Docker қозғалтқышының (Docker Engine) метрикалары қосылған
+(өзгерістен кейін Docker Engine қайта іске қосылған):
+
+{
+  "metrics-addr": "0.0.0.0:9323"
+}
+
+Образдар компьютерде бар:
+- kz/tickets-web:v1 — билет сату сайты (Flask және prometheus_client),
+  5000 портын тыңдайды, оның tickets_sold_total метрикасы — сатылған
+  билеттер саны;
+- kz/tickets-prometheus:v1 — Prometheus, tickets-web қызметінің және
+  осы компьютердегі Docker Engine-нің (9323 порты) метрикаларын жинауға
+  бапталған; веб-интерфейсі — 9090 порты.
+/home/student/tickets-grafana каталогында Dockerfile,
+datasource-prometheus.yaml, dashboard-provider.yaml,
+tickets-dashboard.json (Grafana-дан экспортталған «Tickets» бақылау
+тақтасы (dashboard)) және docker-compose.yml файлдары бар.
+dashboard-provider.yaml файлы Grafana-ға бақылау тақталарын
+/var/lib/grafana/dashboards каталогындағы файлдардан жүктеуді
+нұсқайды.
+
+Dockerfile файлы:
+
+FROM grafana/grafana:11.2.0
+
+COPY datasource-prometheus.yaml ${GF_PATHS_PROVISIONING}/datasources/
+COPY dashboard-provider.yaml ${GF_PATHS_PROVISIONING}/dashboards/
+COPY tickets-dashboard.json /var/lib/grafana/dashboards/
+
+datasource-prometheus.yaml файлы:
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    # Prometheus-ке сұрауларды Grafana сервері өз контейнерінен жібереді
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+docker-compose.yml файлы:
+
+services:
+  tickets-web:
+    image: kz/tickets-web:v1
+    ports:
+      - "8090:5000"
+
+  prometheus:
+    image: kz/tickets-prometheus:v1
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: kz/tickets-grafana:v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+Компьютерде бұл қолданбаның контейнерлері әлі жоқ. Хост терминалында
+командалар ретімен орындалды (барлығы сәтті):
+> cd /home/student/tickets-grafana
+> docker image build -t kz/tickets-grafana:v1 .
+> docker compose up -d
+
+Grafana http://localhost:3000 мекенжайында ашылды (кіру admin/admin).
+Әр тұжырымды осы күйден бастап бөлек қарастырыңыз.
+
+Тапсырма. Дұрыс па, дұрыс емес пе және неге?
+1. Студент /home/student/tickets-grafana каталогындағы
+   tickets-dashboard.json файлына жаңа панель (panel) қосып,
+   docker compose restart grafana командасын орындады. Grafana іске
+   қосылғанда бақылау тақталарының файлдарын қайта оқиды, сондықтан
+   жаңа панель «Tickets» бақылау тақтасында пайда болады.          (5 ұпай)
+2. Prometheus деректер көзі (data source) мен «Tickets» бақылау
+   тақтасы контейнер іске қосылғаннан кейін бірден Grafana-да бар —
+   оларды веб-интерфейсте қолмен баптаудың қажеті жоқ.             (5 ұпай)
+3. datasource-prometheus.yaml файлында url: http://localhost:9090
+   көрсетуге болар еді: Prometheus-тың 9090 порты хостта жарияланған
+   және браузерде Prometheus осы мекенжай бойынша ашылады.         (5 ұпай)
+4. engine_daemon_container_states_containers (әр күйдегі контейнерлер
+   саны, Docker Engine-нің :9323/metrics мекенжайынан),
+   process_resident_memory_bytes (tickets-web контейнеріндегі Python
+   процесінің жадысы) және tickets_sold_total метрикалары бақылау
+   мүмкіндігінің (observability) үш түрлі деңгейіне жатады:
+   инфрақұрылым, орындау ортасы (runtime), қолданба.               (5 ұпай)
+5. FROM жолында latest емес, нақты 11.2.0 тегі көрсетілген, сонда
+   kz/tickets-grafana:v1 образын әр қайта жинаған сайын оның негізінде
+   Grafana-ның бір нұсқасы болады.                                  (4 ұпай)
+
+======================================================================
+ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+======================================================================
+Студентке нұсқау. Файлдар, бастапқы күй және 8 оқиғадан тұратын тізбек
+берілген: қолданбаға сұраулар, Docker командалары, Prometheus немесе
+Grafana-дағы бақылаулар. Оқиғалар Linux-та қатаң ретімен орындалады.
+t — секундпен берілген уақыт; бірінші бағанда оқиға қашан болатыны және
+бақылау қай сәтте орындалатыны көрсетілген. Кестенің бірінші бағаны
+толтырылған. Әр жол үшін қалған екі бағанды толтырыңыз:
+  - «Метрика мәні» — осы сәтте қолданба /metrics мекенжайы бойынша не
+    береді (шарттағы метрикалардың (metrics) мәндері; контейнерлер
+    бірнешеу болса — әр контейнер бойынша); қолданба жұмыс істемесе —
+    солай жазыңыз;
+  - «Prometheus немесе Grafana не көрсетеді» — жолда көрсетілген
+    бақылаудың нәтижесі: белгілері (labels) мен мәндері бар уақыттық
+    қатарлар (time series), нысаналардың (targets) күйі, Grafana
+    панельдерінің мәндері немесе «бос / No data», — және мәндер қай
+    тартудан (scrape) алынғаны.
+Белгілеу: қолданбадағы мән — `tickets_sold_total 2`; Prometheus-тағы
+қатар — `tickets_sold_total{instance="tickets:5000", job="concert"} 2`
+(жолдан жолға өзгермейтін белгілерді қайталамауға болады); нысана —
+`tickets:5000 UP` / `DOWN`. Сандарды 2 немесе 2.0 түрінде жазуға болады.
+Контейнерлердің IP-мекенжайлары белгісіз — <IP>:5000 деп жазыңыз.
+
+Анықтама — 9-тарауда жоқ немесе кітапта қысқа сипатталған Prometheus 3 /
+Grafana / Python клиентінің ережелері:
+  1. Prometheus метрикаларды өзі келіп алады (pull): әр нысананың
+     /metrics мекенжайын scrape_interval сайын бір рет тартады.
+     Тапсырмаларда тартулар t = 0, 10, 20, 30, … сәттерінде болады
+     (барлық нысана бір мезгілде, тарту лезде орындалады); оқиғалар
+     тарту сәттерімен сәйкес келмейді. Қолданба Prometheus-қа ештеңе
+     жібермейді.
+  2. Prometheus интерфейсіндегі сұрау (Query беті — кітапта ол Graph
+     деп аталады; Table қойындысы) әр қатар үшін тартумен жиналған
+     соңғы мәнді көрсетеді. Graph қойындысы тарту сәттерінде жиналған
+     мәндерді салады. Екі тартудың арасында пайда болып, жойылған
+     өзгеріс Prometheus-қа түспейді.
+  3. Қатар = метрика атауы + белгілер жиынтығы. Prometheus job (=
+     job_name) және instance (нысана мекенжайы: static_configs үшін —
+     targets-те жазылғандай, мысалы tickets:5000; dns_sd_configs үшін —
+     контейнердің IP-мекенжайы мен порты) белгілерін қосады.
+     type: A бар dns_sd_configs атау үшін DNS қайтарған әр IP-мекенжайға
+     бір нысана жасайды және тізімді refresh_interval сайын жаңартады;
+     жаңа нысана алғаш рет scrape_interval өткенге дейін тартылады.
+  4. prometheus_client (Python) клиенті мәндерді процестің жадында
+     сақтайды. Counter — тек inc(); Gauge — inc(), dec(), set().
+     Белгілері бар метриканың мәні бар жолы /metrics-те белгілердің осы
+     мәндерімен labels(...) алғаш шақырылғаннан кейін ғана пайда болады,
+     оған дейін тек # HELP және # TYPE жолдары бар. *_created,
+     python_*, process_* қызметтік жолдарын тапсырмаларда ескермеңіз.
+  5. Нысана жауап бермесе (контейнер жұмыс істемесе), тарту сәтсіз:
+     Status -> Target health бетінде (кітапта — Targets) нысананың күйі
+     DOWN, ал оның қатарлары сұрау нәтижелерінен жоғалады. Тапсырмаларда
+     бақылаулар қатарлар жоғалып үлгеретіндей етіп белгіленген.
+  6. sum(өрнек) without(белгілер) аталған белгілерді алып тастайды және
+     қалған белгілері сәйкес келетін қатарларды қосады. {code="500"}
+     сүзгісі белгінің осы мәні бар қатарларды ғана қалдырады. Сәйкес
+     қатарлар болмаса — нәтиже бос (Prometheus: Empty query result;
+     Grafana: No data).
+  7. Grafana қолданбаларды тартпайды: әр панель Prometheus-қа өзінің
+     PromQL-сұрауын жібереді. Stat панелі Prometheus бақылау сәтіне
+     дейін жинаған соңғы мәнді көрсетеді (бақылау алдында бақылау
+     тақтасы жаңартылады).
+  8. docker container kill контейнерді бірден тоқтатады;
+     docker container start сол контейнерді (сол ID және hostname)
+     іске қосады, қолданба 1 с кейін жауап береді. Қолданбаға сұраулар
+     curl арқылы орындалады, әрқайсысы — алдыңғысына жауап келгеннен
+     кейін, егер «қатар (параллель)» деп айтылмаса.
+
+Бағалау: 8 жол, әрқайсысы 4 ұпай (2 ұпай — метрика мәні, 2 ұпай —
+Prometheus немесе Grafana не көрсетеді). Барлығы 32 ұпай. Жауапты ауызша
+түсіндіріңіз.
+
+----------------------------------------------------------------------
+D09-Ф-01
+----------------------------------------------------------------------
+Бастапқы күй:
+- жоба каталогы concert деп аталады, онда compose.yaml және
+  prometheus.yml файлдары бар (төменде); kz/tickets:v1 образы app.py
+  файлынан жиналған (Flask және prometheus_client образда орнатылған);
+- docker compose up -d орындалған; concert-tickets-1 және
+  concert-prometheus-1 контейнерлері жұмыс істеп тұр;
+- t = 0 — Prometheus-тың бірінші тартуы; оған дейін қолданбаға сұраулар
+  болған жоқ.
+
+compose.yaml файлы:
+services:
+  tickets:
+    image: kz/tickets:v1
+    ports:
+      - "8020:5000"
+
+  prometheus:
+    image: prom/prometheus:v3.0.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+prometheus.yml файлы:
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: "concert"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["tickets:5000"]
+
+app.py файлы:
+from flask import Flask
+from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+app = Flask(__name__)
+left = 4  # залдағы бос орындар саны
+
+SOLD = Counter("tickets_sold_total", "Tickets sold")
+LEFT = Gauge("tickets_left", "Free seats left")
+LEFT.set(left)
+
+@app.route("/buy")
+def buy():
+    global left
+    if left == 0:
+        return "sold out", 409  # орын жоқ: метрикалар өзгермейді
+    left -= 1
+    SOLD.inc()
+    LEFT.set(left)
+    return "ticket ok"
+
+@app.route("/refund")
+def refund():
+    global left
+    left += 1  # билет қайтарылды: орын қайта бос
+    LEFT.set(left)
+    return "refund ok"
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+app.run(host="0.0.0.0", port=5000)
+
+/buy және /refund сұраулары http://localhost:8020 мекенжайына жіберіледі.
+QUERY — Prometheus интерфейсінде (http://localhost:9090, Query беті,
+Table қойындысы) екі сұрау орындау: tickets_sold_total және tickets_left.
+
+Тапсырма: кестені толтырыңыз.
+
+| № | Оқиға және бақылау                                          | Метрика мәні | Prometheus немесе Grafana не көрсетеді |
+|---|-------------------------------------------------------------|--------------|----------------------------------------|
+| 1 | t = 3:  /buy екі рет                                        |              |                                        |
+|   | t = 5:  QUERY                                               |              |                                        |
+| 2 | t = 12: QUERY                                               |              |                                        |
+| 3 | t = 14: /buy үш рет                                         |              |                                        |
+|   | t = 16: QUERY                                               |              |                                        |
+| 4 | t = 17: /refund бір рет                                     |              |                                        |
+|   | t = 22: QUERY                                               |              |                                        |
+| 5 | t = 23: docker container kill concert-tickets-1             |              |                                        |
+|   | t = 24: QUERY                                               |              |                                        |
+| 6 | t = 25: docker container start concert-tickets-1            |              |                                        |
+|   | t = 27: /buy бір рет                                        |              |                                        |
+|   | t = 28: QUERY                                               |              |                                        |
+| 7 | t = 32: QUERY; Status -> Target health беті                 |              |                                        |
+| 8 | t = 35: tickets_sold_total және tickets_left сұрауы, Graph  |              |                                        |
+|   |         қойындысы: t = 0, 10, 20, 30 тарту сәттерінде       |              |                                        |
+|   |         графикте қандай мәндер                              |              |                                        |
+
+Ұпайлар: 8 жол × 4 = 32.
+
+----------------------------------------------------------------------
+D09-Ф-02
+----------------------------------------------------------------------
+Бастапқы күй:
+- жоба каталогы shop деп аталады, онда compose.yaml және prometheus.yml
+  файлдары бар (төменде); kz/checkout:v1 образы checkout.py файлынан
+  жиналған, kz/shop:v1 образы — интернет-дүкен: әр тапсырысты
+  POST http://checkout:5000/order сұрауымен жібереді (тапсырысты қай
+  checkout контейнері өңдегені кестеде көрсетілген);
+- docker compose up -d --scale checkout=3 орындалған; shop-shop-1,
+  shop-checkout-1, shop-checkout-2, shop-checkout-3, shop-prometheus-1
+  контейнерлері жұмыс істеп тұр. checkout контейнерлерінің hostname-ін
+  (шын мәнінде — қысқа ID) c1, c2, c3 деп белгілейік
+  (shop-checkout-1 -> c1 және т. б.);
+- t = 0 — Prometheus-тың бірінші тартуы, үш checkout контейнері де
+  табылған; оған дейін тапсырыстар болған жоқ.
+
+compose.yaml файлы:
+services:
+  shop:
+    image: kz/shop:v1
+    ports:
+      - "8030:8000"
+
+  checkout:
+    image: kz/checkout:v1
+
+  prometheus:
+    image: prom/prometheus:v3.0.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+prometheus.yml файлы:
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: "checkout"
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - checkout
+        type: A
+        port: 5000
+        refresh_interval: 5s
+
+checkout.py файлы:
+import socket
+from flask import Flask
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
+app = Flask(__name__)
+HOST = socket.gethostname()  # контейнердің hostname-і
+ORDERS = Counter("checkout_orders_total", "Orders processed", ["hostname"])
+ORDERS.labels(hostname=HOST)  # мәні 0 қатар іске қосылғанда пайда болады
+
+@app.route("/order", methods=["POST"])
+def order():
+    ORDERS.labels(hostname=HOST).inc()
+    return "order accepted"
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+app.run(host="0.0.0.0", port=5000)
+
+Prometheus интерфейсіндегі сұраулар (http://localhost:9090, Query беті,
+Table қойындысы):
+  ALL = checkout_orders_total
+  SUM = sum(checkout_orders_total) without(hostname, instance)
+
+Тапсырма: кестені толтырыңыз. «Метрика мәні» бағанында әр checkout
+контейнеріндегі checkout_orders_total мәнін көрсетіңіз.
+
+| № | Оқиға және бақылау                                          | Метрика мәні | Prometheus немесе Grafana не көрсетеді |
+|---|-------------------------------------------------------------|--------------|----------------------------------------|
+| 1 | t = 2:  Status -> Target health беті                        |              |                                        |
+| 2 | t = 4:  6 тапсырыс: c1 — 3, c2 — 2, c3 — 1                  |              |                                        |
+|   | t = 6:  ALL сұрауы                                          |              |                                        |
+| 3 | t = 12: ALL сұрауы                                          |              |                                        |
+| 4 | t = 13: 4 тапсырыс, бәрін c2 өңдеді                         |              |                                        |
+|   | t = 15: SUM сұрауы                                          |              |                                        |
+| 5 | t = 22: SUM сұрауы және                                     |              |                                        |
+|   |         checkout_orders_total{hostname="c2"} сұрауы         |              |                                        |
+| 6 | t = 24: docker container kill shop-checkout-3               |              |                                        |
+|   | t = 26: SUM сұрауы                                          |              |                                        |
+| 7 | t = 45: ALL және SUM сұраулары                              |              |                                        |
+| 8 | t = 47: docker container start shop-checkout-3              |              |                                        |
+|   | t = 50: 2 тапсырыс, екеуін де c3 өңдеді                     |              |                                        |
+|   | t = 75: ALL және SUM сұраулары                              |              |                                        |
+
+Ұпайлар: 8 жол × 4 = 32.
+
+----------------------------------------------------------------------
+D09-Ф-03
+----------------------------------------------------------------------
+Бастапқы күй:
+- жоба каталогы cinema деп аталады; үш қызметтің контейнерлері жұмыс
+  істеп тұр: payments (төмендегі app.py-дан жиналған kz/payments:v1
+  образы, порт 8040:5000), prometheus (payments:5000 нысанасын 10 с
+  сайын тартады, job_name: "payments") және grafana (порт 3000:3000;
+  9.3-листингтегідей өз образы: деректер көзі (data source) —
+  Prometheus, төрт Stat панелі бар Payments бақылау тақтасы
+  (dashboard), төменде қараңыз);
+- t = 0 — Prometheus-тың бірінші тартуы; оған дейін /pay сұраулары
+  болған жоқ.
+
+app.py файлы:
+import time
+from flask import Flask, request
+from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+app = Flask(__name__)
+REQUESTS = Counter("http_requests_total", "HTTP responses", ["code"])
+IN_FLIGHT = Gauge("http_in_flight", "Requests in progress")
+
+@app.route("/pay")
+def pay():
+    IN_FLIGHT.inc()  # сұрау басталды
+    time.sleep(int(request.args.get("wait", "0")))  # ұзақ төлем, секунд
+    IN_FLIGHT.dec()  # сұрау аяқталды
+    if request.args.get("card") == "bad":
+        REQUESTS.labels(code="500").inc()
+        return "payment failed", 500
+    REQUESTS.labels(code="200").inc()
+    return "paid"
+
+@app.route("/metrics")
+def metrics():
+    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+app.run(host="0.0.0.0", port=5000, threaded=True)  # сұраулар қатар өңделеді
+
+Payments бақылау тақтасының панельдері (әр панельдің PromQL-сұрауы):
+  A «HTTP 200»   sum(http_requests_total{code="200"}) without(instance)
+  B «HTTP 500»   sum(http_requests_total{code="500"}) without(instance)
+  C «Өңделуде»   sum(http_in_flight) without(instance)
+  D «Барлық жауап» sum(http_requests_total) without(instance, code)
+
+Сұраулар http://localhost:8040 мекенжайына жіберіледі. DASH — Grafana-да
+Payments бақылау тақтасын ашып, A, B, C, D панельдерінің мәндерін жазу.
+
+Тапсырма: кестені толтырыңыз. «Метрика мәні» бағанында /metrics беретін
+http_requests_total және http_in_flight жолдарының бәрін көрсетіңіз.
+
+| № | Оқиға және бақылау                                          | Метрика мәні | Prometheus немесе Grafana не көрсетеді |
+|---|-------------------------------------------------------------|--------------|----------------------------------------|
+| 1 | t = 3:  /pay үш рет                                         |              |                                        |
+|   | t = 5:  DASH                                                |              |                                        |
+| 2 | t = 12: Prometheus-та (Query беті, Table қойындысы)         |              |                                        |
+|   |         http_requests_total сұрауы                          |              |                                        |
+| 3 | t = 14: қатар (параллель) екі /pay?wait=20 сұрауы           |              |                                        |
+|   |         (әрқайсысы t = 34 кезінде аяқталады)                |              |                                        |
+|   | t = 16: DASH                                                |              |                                        |
+| 4 | t = 17: /pay?card=bad екі рет                               |              |                                        |
+|   | t = 22: DASH                                                |              |                                        |
+| 5 | t = 25: /pay?wait=2&card=bad (t = 27 кезінде аяқталады)     |              |                                        |
+|   | t = 28: DASH                                                |              |                                        |
+| 6 | t = 32: Prometheus-та http_requests_total және              |              |                                        |
+|   |         http_in_flight сұраулары                            |              |                                        |
+| 7 | t = 34: 3-жолдағы екі сұрау да аяқталды                     |              |                                        |
+|   | t = 36: DASH                                                |              |                                        |
+| 8 | t = 42: DASH                                                |              |                                        |
+
+Ұпайлар: 8 жол × 4 = 32.
+
+======================================================================
+ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+======================================================================
+9-тарау. Тексеру сценарийлері.
+
+Нұсқаулық. Әр сұрақта фрагмент берілген — қолданба файлдары, Docker
+Compose файлы (compose.yaml), Prometheus баптауы (prometheus.yml),
+Grafana файлдары — және бастапқы күйдің сипаттамасы: қандай образдар
+(images) жиналған, қандай контейнерлер бар. 4 тексеру сценарийін
+(тест-кейс сияқты) ойлап табыңыз және оларды кестеге жазыңыз:
+
+| № | Бастапқы шарт немесе әрекет | Күтілетін нәтиже | Сценарий нені тексереді |
+|---|-----------------------------|------------------|-------------------------|
+
+- Бастапқы шарт немесе әрекет — нақты не істейсіз немесе не бересіз:
+  қандай docker / docker compose командалары қандай ретпен орындалады,
+  олардың арасында қанша секунд күтесіз, олардың алдында не өзгертілді
+  (prometheus.yml, Grafana файлы немесе код жолы), қай қызмет (service)
+  тоқтатылды, қолданбаға қандай сұраулар қанша рет жіберілді.
+- Күтілетін нәтиже — Prometheus, Grafana немесе қолданба не көрсетеді:
+  тапсырманың (job) нысаналары (targets) және олардың UP / DOWN күйі;
+  Prometheus сұраулар бетіндегі сұрау кесте (Table) түрінде қанша жол
+  (қатар) және қандай мәндер көрсетеді; Grafana панелі не көрсетеді
+  (сан, график сызығы, No data); қолданба не жауап берді (мысалы,
+  ticket 3, 500 қатесі).
+- Сценарий нені тексереді — Docker / Prometheus / Grafana-ның қай
+  ережесі немесе тапсырмадағы қай тұжырым расталады не теріске
+  шығарылады.
+Сценарийлер әртүрлі нәтиже беруі керек. Контейнер ID-лерін,
+IP-мекенжайларды, нақты уақытты және хабарламалардың нақты мәтінін
+жазудың қажеті жоқ: <id1>, <IP1> деп жазыңыз, уақытты шамамен
+көрсетіңіз («шамамен 15 с кейін»), нәтижені сөзбен сипаттаңыз (мысалы:
+«тапсырмада бір нысана, күйі DOWN», «екі жол, мәндері 4 және 6»,
+«панель No data»).
+
+Анықтама (жауапқа қажет ережелер):
+- Prometheus метрикаларды өзі тартады (pull): әр scrape_interval сайын
+  әр нысанаға (target) GET <metrics_path> сұрауын жібереді және алынған
+  мәндерді уақыт белгісімен сақтайды. Тартулар арасында Prometheus пен
+  Grafana соңғы тартудың мәндерін көрсетеді. Бірінші тарту Prometheus
+  іске қосылғаннан кейін бір scrape_interval ішінде болады.
+- Нысана <хост>:<порт> түрінде жазылады. Хост Prometheus контейнері
+  жұмыс істейтін желінің DNS-і арқылы ізделеді. Контейнер ішінде
+  localhost — сол контейнердің өзі. Бір Compose жобасының контейнерлері
+  бір-бірін қызмет атауы бойынша табады; порт — хосттағы жарияланған
+  порт емес, контейнер порты.
+- static_configs: targets ішіндегі әр жол — бір нысана. Атауға бірнеше
+  контейнер сәйкес келсе, Prometheus әр тартуда олардың тек біреуіне
+  жүгінеді (кітап бойынша — DNS жауабындағы бірінші мекенжайға).
+- type: A бар dns_sd_configs: Prometheus DNS-тен атаудың барлық
+  мекенжайларын сұрайды (қайта — әр 30 с сайын) және әр мекенжайға жеке
+  нысана жасайды.
+- Prometheus әр қатарға job (тапсырма атауы) және instance (нысана
+  мекенжайы: targets-те жазылғандай, ал dns_sd_configs үшін —
+  <IP>:<порт>) белгілерін (labels) қосады.
+- Status → Targets (Prometheus 3-те — Status → Target health):
+  нысаналар тізімі, күйі UP (соңғы тарту сәтті) немесе DOWN (тарту
+  сәтсіз, мысалы connection refused). Нысананы тарту сәтсіз болса
+  немесе қатар нысананың жауабынан жоғалса, қатар сұраулар бетіндегі
+  кестеден бірден жоғалады, ал графиктегі сызық үзіледі.
+- Санауыш (counter) тек өседі; өлшеуіш (gauge) өсе де, кеми де алады
+  (inc, dec, set). Метрика мәндері қолданба процесінің жадында
+  сақталады: жаңа процесс (контейнерді қайта іске қосу, жаңа контейнер)
+  кодтағы бастапқы мәндерден басталады (санауыш үшін — 0).
+- prometheus_client Python-клиенті: Counter("x_total", ...) /metrics-те
+  x_total ретінде шығады (x_created қызметтік жолдары тапсырмаларда
+  көрсетілмеген және қажет емес); Gauge("y", ...) — y ретінде.
+  Counter-де dec() әдісі жоқ, ал теріс санмен inc() ValueError ерекше
+  жағдайын (exception) тудырады (Flask 500 Internal Server Error деп
+  жауап береді).
+- PromQL: sum(m) without(a, b) m метрикасының қатарларын a және b
+  белгілерін алып тастап қосады; басқа белгілерімен ерекшеленетін
+  қатарлар жеке жолдар болып қалады.
+- Prometheus өз баптау файлын контейнер іске қосылғанда оқиды. Grafana
+  provisioning (баптауды дайындау) файлдарын (деректер көзі (data
+  source), бақылау тақталарының провайдері, тақталардың JSON-ы)
+  контейнер іске қосылғанда оқиды.
+- docker compose up -d қызмет контейнерін тек compose.yaml-дағы қызмет
+  сипаттамасы өзгерсе немесе сол тегпен образ қайта жиналса ғана қайта
+  жасайды; қалған контейнерлер сол күйінде жұмыс істей береді.
+  Монтаждалған файлдың мазмұны өзгергенде контейнер қайта жасалмайды.
+- Контейнердегі хост атауы (hostname) — контейнер ID-і. Жоба
+  контейнерлері <жоба>-<қызмет>-<нөмір> деп аталады; жоба — compose.yaml
+  жатқан каталогтың атауы.
+- Фрагменттердегі қолданбалар stop командасымен шамамен 10 с-та
+  тоқтайды.
+
+Бағалау: 4 сценарий, әрқайсысы 8 ұпай (бастапқы шарт — 2, күтілетін нәтиже —
+3, нені тексереді — 3) = 32 ұпай + емтихан алушыға сценарийлерді қорғау —
+12 ұпай. Барлығы 44 ұпай.
+
+----------------------------------------------------------------------
+D09-С-01
+----------------------------------------------------------------------
+Фрагмент. Концерт кассасы: shop дүкені тапсырыстарды қабылдап, оларды
+масштабтау керек tickets билет сату қызметіне береді. Prometheus екі
+қызметтің де метрикаларын тартады.
+
+/home/student/boxoffice каталогы (ағымдағы):
+    compose.yaml
+    shop/        Dockerfile, app.py
+    tickets/     Dockerfile, app.py
+    prometheus/  Dockerfile, prometheus.yml
+
+tickets/Dockerfile файлы (shop/Dockerfile дәл осындай):
+    FROM python:3.12-slim
+    WORKDIR /app
+    RUN pip install flask prometheus_client
+    COPY app.py .
+    CMD ["python", "app.py"]
+
+tickets/app.py файлы:
+    import socket
+    from flask import Flask, Response
+    from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
+    HOST = socket.gethostname()  # контейнерде — контейнер ID-і
+    sold = Counter("tickets_sold_total", "Tickets sold", ["hostname"])
+    app = Flask(__name__)
+
+    @app.post("/buy")
+    def buy():
+        sold.labels(hostname=HOST).inc()
+        return "sold by " + HOST
+
+    @app.get("/metrics")
+    def metrics():
+        return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+    app.run(host="0.0.0.0", port=5000)
+
+shop/app.py файлы:
+    import os
+    import urllib.request
+    from flask import Flask, Response
+    from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
+    TICKETS_URL = os.environ["TICKETS_URL"]
+    orders = Counter("shop_orders_total", "Orders accepted by the shop")
+    app = Flask(__name__)
+
+    @app.get("/buy")
+    def buy():
+        orders.inc()  # тапсырыс қабылданды — tickets-ке дейін санаймыз
+        reply = urllib.request.urlopen(TICKETS_URL + "/buy", data=b"", timeout=3)
+        return reply.read()
+
+    @app.get("/metrics")
+    def metrics():
+        return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+    app.run(host="0.0.0.0", port=8000)
+
+prometheus/Dockerfile файлы:
+    FROM prom/prometheus:v3.1.0
+    COPY prometheus.yml /etc/prometheus/prometheus.yml
+
+prometheus/prometheus.yml файлы:
+    global:
+      scrape_interval: 10s
+
+    scrape_configs:
+      - job_name: "shop"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["shop:8000"]
+
+      - job_name: "tickets"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["tickets:5000"]
+
+compose.yaml файлы:
+    services:
+
+      shop:
+        image: boxoffice-shop:1
+        ports:
+          - "8090:8000"
+        environment:
+          - TICKETS_URL=http://tickets:5000
+
+      tickets:
+        image: boxoffice-tickets:1
+
+      prometheus:
+        image: boxoffice-prometheus:1
+        ports:
+          - "9090:9090"
+
+Образдар boxoffice каталогында мына командалармен жиналған:
+    docker image build -t boxoffice-shop:1 shop
+    docker image build -t boxoffice-tickets:1 tickets
+    docker image build -t boxoffice-prometheus:1 prometheus
+boxoffice жобасының контейнерлері жоқ. tickets қызметі бірнеше
+контейнерде іске қосылғанда, Docker shop → tickets шақыруларын олардың
+арасында шамамен тең бөледі (нақты бөлінуі маңызды емес).
+
+Әзірлеуші былай деп мәлімдейді: «Баптау масштабтауға дайын. docker
+compose up -d --scale tickets=3 командасынан кейін Prometheus үш tickets
+контейнерінің бәрінен метрикаларды тартады: Status → Targets-те tickets
+тапсырмасында үш нысана, ал sum(tickets_sold_total) without(hostname,
+instance) сұрауы әрқашан shop_orders_total-ға тең — қабылданған әр
+тапсырыс сатылымда көрінеді».
+
+Тапсырма. Әзірлеушінің тұжырымын тексеретін 4 сценарий ойлап табыңыз.
+docker compose up -d (соның ішінде --scale tickets=N-мен), docker
+compose stop / start / down, docker container stop <контейнер>
+командаларын орындауға, командалар арасында күтуге,
+http://localhost:8090/buy сұрауларын (қатарынан N рет) жіберуге,
+Prometheus-ті http://localhost:9090 ашуға (Status → Targets;
+tickets_sold_total, shop_orders_total, sum(...) without(...) сұраулары
+кесте түрінде), prometheus/prometheus.yml-ды өзгертуге және
+boxoffice-prometheus:1 образын қайта жинауға болады. Әр сценарий үшін
+бастапқы шартты, күтілетін нәтижені (tickets тапсырмасының нысаналары
+және олардың күйі, сұраулар қанша жол және қандай мәндер көрсетеді,
+http://localhost:8090/buy жауаптары) және сценарий нені тексеретінін
+көрсетіңіз.
+
+Ұпайлар: 4 сценарий × 8 = 32; қорғау — 12. Барлығы 44.
+
+----------------------------------------------------------------------
+D09-С-02
+----------------------------------------------------------------------
+Фрагмент. Тапсырмалар тізімі (to-do) қолданбасының мониторингі:
+қолданба, Prometheus және дайын бақылау тақтасы (dashboard) бар Grafana
+бір Compose файлында (тараудың зертханалық жұмысы негізінде).
+
+/home/student/todo каталогы (ағымдағы):
+    compose.yaml
+    prometheus/  prometheus.yml
+    grafana/     Dockerfile, datasource-prometheus.yaml,
+                 dashboard-provider.yaml, dashboard.json
+
+todo-app:1 қолданба образы жиналған (Python, Flask, prometheus_client).
+Қолданба 5000 портын тыңдайды. /add сұрауы тапсырма жасайды, /metrics
+метрикаларды береді. /metrics-ке сұрауларды қолданба санамайды. /add-қа
+екі сұраудан кейінгі /metrics жауабы (қызметтік жолдар көрсетілмеген):
+    # HELP todo_tasks_created_total Tasks created
+    # TYPE todo_tasks_created_total counter
+    todo_tasks_created_total 2.0
+    # HELP todo_http_requests_total HTTP requests processed
+    # TYPE todo_http_requests_total counter
+    todo_http_requests_total{code="200"} 2.0
+    # HELP todo_http_requests_in_progress HTTP requests being processed now
+    # TYPE todo_http_requests_in_progress gauge
+    todo_http_requests_in_progress 0.0
+
+compose.yaml файлы:
+    services:
+
+      todo-web:
+        image: todo-app:1
+        ports:
+          - "8020:5000"
+
+      prometheus:
+        image: prom/prometheus:v3.1.0
+        ports:
+          - "9091:9090"
+        volumes:
+          - ./prometheus:/etc/prometheus
+
+      grafana:
+        image: todo-grafana:1
+        ports:
+          - "3001:3000"
+        depends_on:
+          - prometheus
+
+prometheus/prometheus.yml файлы (prom/prometheus образы
+/etc/prometheus/prometheus.yml файлын оқиды):
+    global:
+      scrape_interval: 15s
+
+    scrape_configs:
+      - job_name: "todo"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["localhost:5000"]
+
+grafana/Dockerfile файлы:
+    FROM grafana/grafana:11.3.0
+
+    COPY datasource-prometheus.yaml ${GF_PATHS_PROVISIONING}/datasources/
+    COPY dashboard-provider.yaml ${GF_PATHS_PROVISIONING}/dashboards/
+    COPY dashboard.json /etc/grafana/dashboards/
+
+grafana/datasource-prometheus.yaml файлы:
+    apiVersion: 1
+
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+
+grafana/dashboard-provider.yaml файлы:
+    apiVersion: 1
+
+    providers:
+      - name: todo
+        type: file
+        options:
+          path: /etc/grafana/dashboards
+
+grafana/dashboard.json файлы (мазмұны көрсетілмеген) соңғы 15 минуттағы
+үш график-панельден тұратын Todo бақылау тақтасын сипаттайды:
+    Tasks created   sum(todo_tasks_created_total) without(instance)
+    HTTP requests   sum(todo_http_requests_total) without(instance, code)
+    In progress     sum(todo_http_requests_in_progress) without(instance)
+
+Grafana образы todo каталогында docker image build -t todo-grafana:1
+grafana командасымен жиналған (базалық образда
+GF_PATHS_PROVISIONING=/etc/grafana/provisioning). Grafana-ға кіру —
+admin / admin. todo жобасының контейнерлері жоқ.
+
+Әзірлеуші былай деп мәлімдейді: «docker compose up -d дайын мониторингті
+көтереді: Prometheus todo-web метрикаларын бірден тартады, Grafana
+қанша тапсырма жасалғаны көрінетін Todo тақтасымен ашылады. Prometheus
+баптауын немесе тақтаны өзгерту үшін жоба каталогындағы файлды түзетіп,
+docker compose up -d командасын қайта орындау жеткілікті».
+
+Тапсырма. Әзірлеушінің тұжырымын тексеретін 4 сценарий ойлап табыңыз.
+docker compose up -d / stop / start / restart <қызмет> / down
+командаларын орындауға, командалар арасында күтуге,
+http://localhost:8020/add және http://localhost:8020/metrics
+сұрауларын жіберуге, Prometheus-ті http://localhost:9091 (Status →
+Targets, сұраулар) және Grafana-ны http://localhost:3001 (Todo
+тақтасы) ашуға, prometheus және grafana каталогтарындағы файлдарды
+өзгертуге, todo-grafana:1 образын қайта жинауға болады. Әр сценарий
+үшін бастапқы шартты, күтілетін нәтижені (todo тапсырмасының нысанасы
+және оның күйі, Todo тақтасының панельдері не көрсетеді, қолданба
+жауаптары) және сценарий нені тексеретінін көрсетіңіз.
+
+Ұпайлар: 4 сценарий × 8 = 32; қорғау — 12. Барлығы 44.
+
+----------------------------------------------------------------------
+D09-С-03
+----------------------------------------------------------------------
+Фрагмент. Камералық концертке (5 орын) билет сату: қолданба
+метрикалары және сату бөліміне арналған бақылау тақтасы.
+
+/home/student/concert каталогы (ағымдағы): compose.yaml, Dockerfile,
+app.py, prometheus/ (Dockerfile, prometheus.yml), grafana/ (Dockerfile
+және provisioning файлдары).
+
+Dockerfile файлы:
+    FROM python:3.12-slim
+    WORKDIR /app
+    RUN pip install flask prometheus_client
+    COPY app.py .
+    CMD ["python", "app.py"]
+
+app.py файлы:
+    from flask import Flask, Response
+    from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+    SEATS = 5  # залдағы орын саны
+    sold = 0   # сатылған билеттер
+
+    tickets_sold = Counter("tickets_sold_total", "Tickets sold")
+    seats_free = Gauge("seats_free", "Free seats")
+    sessions = Counter("active_sessions_total", "Users choosing seats now")
+    seats_free.set(SEATS)
+
+    app = Flask(__name__)
+
+    @app.get("/enter")  # пайдаланушы зал сызбасын ашты
+    def enter():
+        sessions.inc()
+        return "welcome"
+
+    @app.get("/leave")  # пайдаланушы зал сызбасын жапты
+    def leave():
+        sessions.inc(-1)
+        return "bye"
+
+    @app.get("/buy")
+    def buy():
+        global sold
+        if sold >= SEATS:
+            return "sold out", 409
+        sold += 1
+        tickets_sold.inc()
+        seats_free.set(SEATS - sold)
+        return "ticket " + str(sold)
+
+    @app.get("/metrics")
+    def metrics():
+        return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+    app.run(host="0.0.0.0", port=5000)
+
+prometheus/prometheus.yml файлы (concert-prometheus:1 образына
+көшірілген):
+    global:
+      scrape_interval: 10s
+
+    scrape_configs:
+      - job_name: "concert"
+        metrics_path: /metrics
+        static_configs:
+          - targets: ["tickets:5000"]
+
+compose.yaml файлы:
+    services:
+
+      tickets:
+        image: concert-tickets:1
+        ports:
+          - "8030:5000"
+
+      prometheus:
+        image: concert-prometheus:1
+        ports:
+          - "9092:9090"
+
+      grafana:
+        image: concert-grafana:1
+        ports:
+          - "3002:3000"
+
+concert-grafana:1 образында http://prometheus:9090 деректер көзі және
+соңғы 15 минуттағы үш график-панельден тұратын Concert бақылау тақтасы
+бар:
+    Tickets sold         sum(tickets_sold_total) without(instance)
+    Free seats           sum(seats_free) without(instance)
+    Choosing seats now   sum(active_sessions_total) without(instance)
+
+Барлық образдар жиналған (concert-tickets:1 — жоғарыдағы
+Dockerfile-дан). concert жобасының контейнерлері жоқ.
+
+Әзірлеуші былай деп мәлімдейді: «Concert тақтасы сату бөліміне дайын:
+Tickets sold сату басталғаннан бері қанша билет сатылғанын, Free seats
+— қанша орын қалғанын, Choosing seats now — дәл қазір қанша пайдаланушы
+орын таңдап отырғанын көрсетеді. Тақтадағы мәндер әр сұраудан кейін
+бірден өзгереді».
+
+Тапсырма. Әзірлеушінің тұжырымын тексеретін 4 сценарий ойлап табыңыз.
+docker compose up -d / stop / start / restart <қызмет> / down
+командаларын орындауға, командалар арасында күтуге,
+http://localhost:8030/enter, /leave, /buy және /metrics сұрауларын
+(қатарынан N рет) жіберуге, Grafana-дағы Concert тақтасын
+(http://localhost:3002) және Prometheus-тегі сұрауларды
+(http://localhost:9092) қарауға, app.py-ды өзгертуге және
+concert-tickets:1 образын қайта жинауға болады. Әр сценарий үшін
+бастапқы шартты, күтілетін нәтижені (қолданба жауаптары, көрсетілген
+уақыт сәттеріндегі тақта панельдерінің мәндері) және сценарий нені
+тексеретінін көрсетіңіз.
+
+Ұпайлар: 4 сценарий × 8 = 32; қорғау — 12. Барлығы 44.

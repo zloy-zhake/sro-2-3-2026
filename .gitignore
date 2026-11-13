@@ -1,0 +1,18 @@
+# Окружение и кэши
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+dist/
+.env
+
+# Остатки атомарной перегенерации данных (plan §1.3)
+src/exam_tickets/data.new/
+src/exam_tickets/data.old/
+
+# Вопросы: белый список — только каталоги и *_questions*.txt (требования §6.4)
+/questions/**
+!/questions/**/
+!/questions/**/*_questions*.txt

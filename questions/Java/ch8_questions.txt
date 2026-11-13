@@ -1,0 +1,559 @@
+ch8_questions
+Java тілінде бағдарламалау — устный экзамен, 8-тарау «Serious Polymorphism» (Head First Java, 3rd ed.)
+Задания без ответов. 09.11.2026
+
+======================================================================
+КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+======================================================================
+
+Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+
+----------------------------------------------------------------------
+J08-К-01
+----------------------------------------------------------------------
+
+Бағдарламаны оқыңыз.
+
+abstract class Kolik {
+  public abstract void jyljy();
+  public abstract void toqtau();
+  public void signal() {
+    System.out.println("bip-bip");
+  }
+}
+
+abstract class Avtokolik extends Kolik {
+  public void toqtau() {
+    System.out.println("tejegish basyldy");
+  }
+}
+
+class Taksi extends Avtokolik {
+  public void jyljy() {
+    System.out.println("taksi jolga shyqty");
+  }
+}
+
+public class Garazh {
+  public static void main(String[] args) {
+    Kolik k = new Taksi();                   // 1-жол
+    k.jyljy();
+    k.toqtau();                              // 2-жол
+    k.signal();
+  }
+}
+
+1. 1-жол компиляцияланады, себебі абстрактілі класты (abstract class) сілтеме типі ретінде жариялауға болады, ал new арқылы нақты кластың (concrete class) — Taksi класының объектісі жасалады. (5 ұпай)
+2. 1-жолдан кейін Kolik k2 = new Kolik(); жолын қоссақ, код компиляцияланады, себебі Kolik класында денесі бар signal() әдісі бар. (5 ұпай)
+3. Taksi класы компиляцияланбайды, себебі ол Kolik класының toqtau() абстрактілі әдісін (abstract method) іске асырмаған (implements). (5 ұпай)
+4. Kolik класындағы public abstract void jyljy(); жолын public abstract void jyljy() { } деп өзгертсек, код компиляцияланбайды, себебі абстрактілі әдістің денесі болмайды — оның жарияланымы нүктелі үтірмен (;) аяқталады. (5 ұпай)
+5. Kolik класы компиляцияланады, себебі абстрактілі класта абстрактілі әдістермен қатар денесі бар кәдімгі әдістер (мысалы, signal()) де бола алады. (4 ұпай)
+
+
+----------------------------------------------------------------------
+J08-К-02
+----------------------------------------------------------------------
+
+Бағдарламаны оқыңыз.
+
+interface Kuzetshi {
+  public abstract void kuzetu();
+  public abstract void dabylQagu();
+}
+
+interface Oiynshy {
+  public abstract void oinau();
+}
+
+abstract class Januar {
+  public abstract void jeu();
+}
+
+class It extends Januar implements Kuzetshi, Oiynshy {    // A-жол
+  public void jeu() {
+    System.out.println("It suiek jeidi");
+  }
+  public void kuzetu() {
+    System.out.println("It aulany kuzetedi");
+  }
+  public void dabylQagu() {
+    System.out.println("ham-ham");
+  }
+  public void oinau() {                                    // B-жол
+    System.out.println("It dop quady");
+  }
+}
+
+class Robot {
+  public void zariadtau() {
+    System.out.println("Robot zariadtaldy");
+  }
+}
+
+class RoboKuzet extends Robot implements Kuzetshi {
+  public void kuzetu() {
+    System.out.println("RoboKuzet kamerany qosty");
+  }
+  public void dabylQagu() {
+    System.out.println("bip-bip");
+  }
+}
+
+public class Aula {
+  public static void main(String[] args) {
+    Kuzetshi[] kuzet = new Kuzetshi[2];
+    kuzet[0] = new It();
+    kuzet[1] = new RoboKuzet();                            // C-жол
+    for (Kuzetshi k : kuzet) {
+      k.kuzetu();
+    }
+  }
+}
+
+1. C-жол компиляцияланбайды, себебі It пен RoboKuzet әртүрлі мұрагерлік ағаштарынан (Januar және Robot), ал бір массивке тек бір мұрагерлік ағашының объектілерін салуға болады. (5 ұпай)
+2. B-жолда public сөзін алып тастасақ, код компиляцияланбайды, себебі интерфейс (interface) әдістері жасырын түрде public, ал оны іске асыратын (implements) әдістің қолжетімділігін төмендетуге болмайды. (5 ұпай)
+3. A-жол компиляцияланбайды, себебі It класы бір класты кеңейтіп (extends), сонымен қатар екі интерфейсті іске асырады (implements), ал Java-да класс тек бір типтен мұра ала алады. (5 ұпай)
+4. C-жолдан кейін Kuzetshi k2 = new Kuzetshi(); жолын қоссақ, код компиляцияланады, себебі Kuzetshi интерфейсіндегі әдістердің бәрі public. (5 ұпай)
+5. Oiynshy интерфейсіндегі public abstract void oinau(); жолын void oinau(); деп жазсақ, код бұрынғыдай компиляцияланады, себебі интерфейс әдістері жасырын түрде public және abstract болып саналады. (4 ұпай)
+
+
+----------------------------------------------------------------------
+J08-К-03
+----------------------------------------------------------------------
+
+Бағдарламаны оқыңыз.
+
+import java.util.ArrayList;
+
+class Kitap {
+  public void oqu() {
+    System.out.println("Kitap oqyldy");
+  }
+}
+
+class Dapter {
+  public void jazu() {
+    System.out.println("Dapterge jazyldy");
+  }
+}
+
+class Sumka {
+  public Object alu(Object zat) {
+    return zat;
+  }
+}
+
+public class SumkaTest {
+  public static void main(String[] args) {
+    Sumka s = new Sumka();
+    ArrayList<Object> zattar = new ArrayList<Object>();
+    zattar.add(new Dapter());
+    zattar.add(new Kitap());
+    Object o = s.alu(zattar.get(1));         // 1-жол
+    Kitap k = (Kitap) o;                     // 2-жол
+    k.oqu();
+    Object d = zattar.get(0);
+    if (d instanceof Kitap) {                // 3-жол
+      Kitap k2 = (Kitap) d;
+      k2.oqu();
+    } else {
+      System.out.println("bul kitap emes");
+    }
+  }
+}
+
+1. 1-жолды Kitap o = s.alu(zattar.get(1)); деп өзгертсек, код компиляцияланады, себебі zattar тізімінің [1] ұяшығында шынымен Kitap объектісі жатыр. (5 ұпай)
+2. 2-жолды Kitap k = (Kitap) zattar.get(0); деп өзгертсек, код компиляцияланады, бірақ орындалу кезінде ClassCastException ерекше жағдайы (exception) туындайды, себебі [0] ұяшығындағы объект — Dapter. (5 ұпай)
+3. 3-жолдағы шарт false болады, сондықтан бағдарлама екінші жол ретінде «bul kitap emes» шығарады, себебі instanceof операторы сілтеменің типін емес, объектінің нақты типін тексереді. (5 ұпай)
+4. 2-жолдан кейін o.oqu(); жолын қоссақ, код компиляцияланады, себебі o сілтемесі Kitap объектісін көрсетеді. (5 ұпай)
+5. 2-жолдан кейін boolean birdei = o.equals(k); жолын қоссақ, код компиляцияланады, себебі equals() — Object класының әдісі, ал o — Object типті сілтеме. (4 ұпай)
+
+
+======================================================================
+ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+======================================================================
+
+Кестедегі «Код» бағанының әр жолы үшін екі бағанды толтырыңыз:
+- «Компиляцияланады ма? Неге?» — «иә» немесе «жоқ» және себебі: қандай ереже бұзылады немесе неге бұл жол заңды (сілтеме типі, IS-A, абстрактілі класс (abstract class), нақты класс (concrete class), абстрактілі әдіс (abstract method), интерфейс (interface), іске асыру (implements), типті келтіру (casting));
+- «Не орындалады (не шығады) немесе қандай ерекше жағдай (exception)» — экранға шығатын мәтін (қай кластың әдісі орындалатынын көрсетіңіз) немесе қандай ерекше жағдай туындайды. Ештеңе шықпаса — «ештеңе шықпайды»; ерекше жағдай болмаса — «ерекше жағдай жоқ»; жол компиляцияланбаса — «—».
+Әр жол — 4 ұпай (2 + 2).
+
+----------------------------------------------------------------------
+J08-Ф-01
+----------------------------------------------------------------------
+
+Жолдар main ішінде ретімен орындалады. Компиляцияланбайтын жол кодтан сызылып тасталған деп есептеледі (3-бағанда «—»), келесі жолдар онсыз бағаланады.
+
+interface Belgi {
+  int kod();
+}
+
+abstract class Suretshi implements Belgi {
+  public int kod() {
+    return 3;
+  }
+}
+
+class Sayqymazaq extends Suretshi {
+  public int kod() {
+    return 8;
+  }
+}
+
+class Akt extends Suretshi { }
+
+class Korermen extends Akt {
+  public int kod() {
+    return super.kod() + 1;
+  }
+}
+
+public class Sahna extends Sayqymazaq {
+  public static void main(String[] args) {
+    // ---- кесте осы жерден басталады ----
+    Belgi[] b = new Belgi[3];
+    b[0] = new Suretshi();
+    b[0] = new Akt();
+    b[1] = new Belgi();
+    b[1] = new Sahna();
+    b[2] = new Korermen();
+    System.out.println(b[2].kod() + b[1].kod());
+    for (int x = 0; x < 3; x++) {
+      System.out.println(b[x].kod() + " " + b[x].getClass());
+    }
+  }
+}
+
+| № | Код                                          | Компиляцияланады ма? Неге? | Не орындалады (не шығады) немесе қандай ерекше жағдай (exception) |
+|---|----------------------------------------------|----------------------------|------------------------------------------------------------------|
+| 1 | Belgi[] b = new Belgi[3];                    |                            |                                                                  |
+| 2 | b[0] = new Suretshi();                       |                            |                                                                  |
+| 3 | b[0] = new Akt();                            |                            |                                                                  |
+| 4 | b[1] = new Belgi();                          |                            |                                                                  |
+| 5 | b[1] = new Sahna();                          |                            |                                                                  |
+| 6 | b[2] = new Korermen();                       |                            |                                                                  |
+| 7 | System.out.println(b[2].kod() + b[1].kod()); |                            |                                                                  |
+| 8 | for (int x = 0; x < 3; x++) { System.out.println(b[x].kod() + " " + b[x].getClass()); } | |                                                     |
+
+----------------------------------------------------------------------
+J08-Ф-02
+----------------------------------------------------------------------
+
+Жолдар main ішінде ретімен орындалады. Компиляцияланбайтын жол кодтан сызылып тасталған деп есептеледі (3-бағанда «—»), келесі жолдар онсыз бағаланады. Ерекше жағдай туындаса, сол ұяшыққа одан бұрын шыққан мәтінді де жазыңыз.
+
+import java.util.ArrayList;
+
+class Kolik {
+  void jur() {
+    System.out.println("kolik juredi");
+  }
+}
+
+class Mashina extends Kolik {
+  void jur() {
+    System.out.println("mashina zyrlaidy");
+  }
+  void signal() {
+    System.out.println("bip-bip");
+  }
+}
+
+class Velosiped extends Kolik { }
+
+public class Garaj {
+  public static void main(String[] args) {
+    ArrayList<Object> tizim = new ArrayList<Object>();
+    tizim.add(new Mashina());
+    tizim.add(new Velosiped());
+    // ---- кесте осы жерден басталады ----
+    Mashina m = tizim.get(0);
+    Object o = tizim.get(0);
+    o.signal();
+    Mashina m2 = (Mashina) o;
+    m2.jur();
+    if (tizim.get(1) instanceof Mashina) { System.out.println("mashina"); } else { System.out.println("mashina emes"); }
+    Kolik k = (Kolik) tizim.get(1); k.jur();
+    for (Object x : tizim) { Mashina mm = (Mashina) x; mm.signal(); }
+  }
+}
+
+| № | Код                                                               | Компиляцияланады ма? Неге? | Не орындалады (не шығады) немесе қандай ерекше жағдай (exception) |
+|---|-------------------------------------------------------------------|----------------------------|------------------------------------------------------------------|
+| 1 | Mashina m = tizim.get(0);                                         |                            |                                                                  |
+| 2 | Object o = tizim.get(0);                                          |                            |                                                                  |
+| 3 | o.signal();                                                       |                            |                                                                  |
+| 4 | Mashina m2 = (Mashina) o;                                         |                            |                                                                  |
+| 5 | m2.jur();                                                         |                            |                                                                  |
+| 6 | if (tizim.get(1) instanceof Mashina) { System.out.println("mashina"); } else { System.out.println("mashina emes"); } | |                    |
+| 7 | Kolik k = (Kolik) tizim.get(1); k.jur();                          |                            |                                                                  |
+| 8 | for (Object x : tizim) { Mashina mm = (Mashina) x; mm.signal(); } |                            |                                                                  |
+
+----------------------------------------------------------------------
+J08-Ф-03
+----------------------------------------------------------------------
+
+Кестенің әр жолы — белгіленген орынға қойылатын Mysyq класының бір нұсқасы. Жолдар бір-біріне тәуелсіз: әр жолда бағдарламада Mysyq класының тек осы нұсқасы тұр деп есептеңіз. 2-бағанда — бағдарлама компиляцияланады ма және неге (қандай ереже бұзылады немесе неге заңды); 3-бағанда — осы нұсқа қойылғанда бағдарламаның толық шығысы.
+
+interface Oiynshy {
+  void oina();
+}
+
+interface Dos {
+  void erkele();
+}
+
+abstract class Januar {
+  abstract void je();
+  void jur() {
+    System.out.println("januar juredi");
+  }
+}
+
+class Ansy {
+  void anda() {
+    System.out.println("ansy andidy");
+  }
+}
+
+// <-- осы жерге кестедегі нұсқа қойылады
+
+public class Aula {
+  public static void main(String[] args) {
+    Mysyq m = new Mysyq();
+    Januar j = m;
+    Oiynshy o = m;
+    j.je();
+    j.jur();
+    o.oina();
+  }
+}
+
+| № | Код (белгіленген орынға қойылады) | Компиляцияланады ма? Неге? | Не орындалады (не шығады) немесе қандай ерекше жағдай (exception) |
+|---|-----------------------------------|----------------------------|------------------------------------------------------------------|
+| 1 | class Mysyq extends Januar implements Oiynshy { void je() { System.out.println("mysyq balyq jeidi"); } public void oina() { System.out.println("mysyq dop quady"); } } | | |
+| 2 | class Mysyq extends Januar implements Oiynshy { public void oina() { System.out.println("mysyq dop quady"); } } | | |
+| 3 | class Mysyq extends Januar implements Oiynshy { void je() { System.out.println("mysyq balyq jeidi"); } void oina() { System.out.println("mysyq dop quady"); } } | | |
+| 4 | class Mysyq extends Januar implements Oiynshy { abstract void je() { System.out.println("mysyq balyq jeidi"); } public void oina() { System.out.println("mysyq dop quady"); } } | | |
+| 5 | class Mysyq extends Januar implements Oiynshy, Dos { public void je() { System.out.println("mysyq sut ishedi"); } void jur() { System.out.println("mysyq sekiredi"); } public void oina() { erkele(); } public void erkele() { System.out.println("mysyq erkeleidi"); } } | | |
+| 6 | class Mysyq extends Januar implements Oiynshy { void je(); public void oina() { System.out.println("mysyq dop quady"); } } | | |
+| 7 | abstract class Mysyq extends Januar implements Oiynshy { void je() { System.out.println("mysyq balyq jeidi"); } public void oina() { System.out.println("mysyq dop quady"); } } | | |
+| 8 | class Mysyq extends Januar, Ansy implements Oiynshy { void je() { System.out.println("mysyq balyq jeidi"); } public void oina() { System.out.println("mysyq dop quady"); } } | | |
+
+
+======================================================================
+ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+======================================================================
+
+Кодтағы ? белгісінің орнына қойылатын мән (объектінің класы, айнымалының типі немесе мәні, шақырулар саны) — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+1. кіріс мәні — әр ? орнына қандай мән қойылады;
+2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек (ерекше жағдай (exception) болса — қайсысы);
+3. тест нені тексереді — қай класстың әдісі орындалады (абстрактілі класстан (abstract class) мұраға алынған, қайта анықталған (overriding) немесе super арқылы шақырылған базалық класс нұсқасы), instanceof-тың қай тармағы орындалады, қай шекара (boundary) тексеріледі.
+
+Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+
+----------------------------------------------------------------------
+J08-С-01
+----------------------------------------------------------------------
+
+abstract class Esep {              // абстрактілі класс (abstract class)
+  void jasau() {
+    System.out.println("dayyndyq");  // есепті дайындау (set up report)
+  }
+
+  void basu() {
+    System.out.println("jalpy basu");  // жалпы басып шығару
+  }
+
+  abstract String atau();
+}
+
+class AilyqEsep extends Esep {     // айлық есеп
+  String atau() {
+    return "ailyq";
+  }
+}
+
+class SozEsep extends Esep {       // сәнді сөздер есебі (buzzwords)
+  void jasau() {
+    super.jasau();
+    System.out.println("soz tekseru");
+  }
+
+  String atau() {
+    return "soz";
+  }
+}
+
+class QarjyEsep extends Esep {     // қаржы есебі
+  void jasau() {
+    System.out.println("qarjy esepteu");
+    super.jasau();
+  }
+
+  void basu() {
+    System.out.println("keste basu");
+  }
+
+  String atau() {
+    return "qarjy";
+  }
+}
+
+class JedelEsep extends Esep {     // жедел есеп — дайындықсыз
+  void jasau() {
+    System.out.println("jedel tizim");
+  }
+
+  String atau() {
+    return "jedel";
+  }
+}
+
+class Basqarushy {
+  void oryndau(Esep e) {
+    System.out.println("[" + e.atau() + "]");
+    e.jasau();
+    e.basu();
+  }
+}
+
+public class EsepTest {
+  public static void main(String[] args) {
+    Basqarushy b = new Basqarushy();
+    Esep e = new ?();              // тест кірісі: есептің класы
+    b.oryndau(e);
+  }
+}
+
+Талап: ? орнына AilyqEsep, SozEsep, QarjyEsep немесе JedelEsep қойылады. Бағдарлама алдымен есептің атауын жақшада шығарады (мысалы, [soz]), содан кейін есепті жасау қадамдарын — әрқайсысы жеке жолда. JedelEsep-тен басқа барлық есеп «dayyndyq» қадамынан басталады (дайындық әрқашан бірінші). Одан кейін — есептің өз қадамы: SozEsep — «soz tekseru», QarjyEsep — «qarjy esepteu», JedelEsep — «jedel tizim» (JedelEsep дайындықсыз жасалады); AilyqEsep-тің өз қадамы жоқ. Соңғы жол — басып шығару: QarjyEsep — «keste basu», қалғандары — «jalpy basu».
+
+
+----------------------------------------------------------------------
+J08-С-02
+----------------------------------------------------------------------
+
+class Januar {
+  String dybys() {
+    return "...";
+  }
+}
+
+class It extends Januar {
+  String dybys() {
+    return "hav";
+  }
+}
+
+class Mysyq extends Januar {
+  String dybys() {
+    return "miau";
+  }
+}
+
+class Balyq extends Januar {
+}
+
+class Qora {                       // қора — жануарлар тізімі (MyAnimalList)
+  private Januar[] januarlar = new Januar[5];
+  private int kelesi = 0;
+
+  void qos(Januar j) {
+    if (kelesi <= januarlar.length) {
+      januarlar[kelesi] = j;
+      System.out.println(kelesi + ": " + j.dybys());
+      kelesi++;
+    } else {
+      System.out.println("oryn joq");
+    }
+  }
+
+  int sany() {
+    return kelesi;
+  }
+}
+
+public class QoraTest {
+  public static void main(String[] args) {
+    Qora q = new Qora();
+    int n = ?;                     // тест кірісі: qos шақыру саны (0–8)
+    for (int i = 0; i < n; i++) {
+      q.qos(new ?());              // тест кірісі: жануардың класы
+    }
+    System.out.println("barlygy: " + q.sany());
+  }
+}
+
+Талап: n — 0-ден 8-ге дейінгі бүтін сан; ? орнына It, Mysyq, Balyq немесе Januar қойылады. Қораға ең көбі 5 жануар сияды. Әр сәтті қосуда бағдарлама «орын нөмірі: дыбыс» жолын шығарады (нөмір 0-ден басталады, дыбыс — сол жануардың dybys() нәтижесі). Қора толы болса, «oryn joq» шығарады және жұмысын жалғастырады. Соңғы жол — «barlygy: X», мұндағы X — қорадағы жануарлар саны.
+
+
+----------------------------------------------------------------------
+J08-С-03
+----------------------------------------------------------------------
+
+interface UiJanuar {               // интерфейс (interface): үй жануары (Pet)
+  void oinau();
+}
+
+abstract class Januar {            // абстрактілі класс (abstract class)
+  abstract void tamaq();
+}
+
+class It extends Januar implements UiJanuar {
+  void tamaq() {
+    System.out.println("it jeidi");
+  }
+
+  public void oinau() {
+    System.out.println("it dop quady");
+  }
+}
+
+class Mysyq extends Januar implements UiJanuar {
+  void tamaq() {
+    System.out.println("mysyq jeidi");
+  }
+
+  public void oinau() {
+    System.out.println("mysyq jip oinaidy");
+  }
+}
+
+class Begemot extends Januar {
+  void tamaq() {
+    System.out.println("begemot jeidi");
+  }
+}
+
+class Robot {
+}
+
+class RoboIt extends Robot implements UiJanuar {
+  public void oinau() {
+    System.out.println("roboit bi bileidi");
+  }
+}
+
+class Qyzmetshi {                  // қызметші
+  void qyzmet(Object x) {
+    if (x instanceof UiJanuar) {
+      It p = (It) x;               // типті келтіру (casting)
+      p.oinau();
+    } else if (x instanceof Januar) {
+      Januar j = (Januar) x;
+      j.tamaq();
+    } else {
+      System.out.println("tanylmady");
+    }
+  }
+}
+
+public class QyzmetTest {
+  public static void main(String[] args) {
+    Qyzmetshi q = new Qyzmetshi();
+    q.qyzmet(new ?());             // тест кірісі: объектінің класы
+    System.out.println("boldy");
+  }
+}
+
+Талап: ? орнына It, Mysyq, Begemot, RoboIt немесе Robot қойылады. qyzmet әдісі: объект үй жануары болса (UiJanuar интерфейсін іске асыратын (implements) кез келген класс), онымен ойнайды — сол объектінің oinau() әдісі орындалады; үй жануары емес жануар (Januar) болса, оны тамақтандырады — tamaq() орындалады; басқа объект болса, «tanylmady» шығарады. Соңғы жол — «boldy».
+

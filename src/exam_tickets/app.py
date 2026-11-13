@@ -62,6 +62,17 @@ def _ui_lang() -> Lang:
     return Lang(st.session_state.get("ui_lang", Lang.RU))
 
 
+def _resync_stage_widget() -> None:
+    """Заставляет фронтенд заново показать выбранный этап после смены подписей.
+
+    При смене языка интерфейса меняются подписи радио, и фронтенд рисует его с
+    дефолтом (пустой выбор), хотя на сервере этап сохранён. Присвоение того же
+    значения в колбэке заставляет Streamlit отправить фронтенду явное
+    ``set_value``. Значение не меняется, ``on_change`` не вызывается.
+    """
+    st.session_state["stage"] = st.session_state["stage"]
+
+
 def _apply_qlang(value: Lang | None) -> None:
     """Применяет язык вопросов: сбрасывает билет и ведёт за ним язык интерфейса.
 
@@ -75,6 +86,7 @@ def _apply_qlang(value: Lang | None) -> None:
     st.session_state["ticket"] = None
     if value is not None and not st.session_state["ui_lang_manual"]:
         st.session_state["ui_lang"] = value
+        _resync_stage_widget()
 
 
 def _on_subject() -> None:
@@ -100,6 +112,7 @@ def _on_stage() -> None:
 def _on_ui_lang() -> None:
     """Ручной выбор языка интерфейса: больше не следуем за языком вопросов."""
     st.session_state["ui_lang_manual"] = True
+    _resync_stage_widget()
 
 
 def _on_generate() -> None:

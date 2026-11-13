@@ -1,0 +1,6 @@
+[server]
+# Без этого streamlit run при первом запуске спрашивает e-mail и открывает браузер
+headless = true
+
+[browser]
+gatherUsageStats = false

@@ -1,0 +1,384 @@
+subject: java
+language: kk
+file_chapter: 6
+chapters:
+- 6
+chapter_titles:
+- Using the Java Library
+levels:
+  cognitive:
+    heading: КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+    points: 24
+    instructions: |
+      Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+    questions:
+    - id: J06-К-01
+      text: |
+        Бағдарламаны оқыңыз.
+
+        import java.util.ArrayList;
+
+        class Kitap {
+          int bet;
+        }
+
+        class Soreler {
+          public static void main(String[] args) {
+            Kitap k1 = new Kitap();
+            Kitap k2 = new Kitap();
+            Kitap[] sore = new Kitap[3];
+            sore[0] = k1;
+            sore[1] = k2;
+            ArrayList<Kitap> tizim = new ArrayList<Kitap>();
+            tizim.add(k1);
+            tizim.add(k2);
+            Kitap alyngan = sore[1];                 // A-жол
+            sore[1] = null;                          // B-жол
+            tizim.remove(1);                         // C-жол
+            System.out.println(sore.length + " " + tizim.size());   // D-жол
+          }
+        }
+
+        1. A-жол (Kitap alyngan = sore[1];) k2 объектісін sore массивінен алып тастайды, сондықтан A-жолдан кейін sore[1] бос болады. (5 ұпай)
+        2. B-жолдан кейін sore.length мәні 2 болады, себебі бір ұяшыққа null меншіктелді. (5 ұпай)
+        3. C-жолдан кейін tizim.size() мәні 1 болады, себебі remove() әдісі (method) элементті ArrayList-тен шынымен алып тастайды және тізім кішірейеді. (5 ұпай)
+        4. D-жолдағы sore.length орнына sore.size() жазуға болады, себебі массив те объект, сондықтан оның әдістері бар. (5 ұпай)
+        5. tizim.add(k2); жолынан кейін tizim.add("Abai"); жолын қоссақ, код компиляцияланбайды, себебі ArrayList<Kitap> тек Kitap типті объектілерді қабылдайды. (4 ұпай)
+    - id: J06-К-02
+      text: |
+        Бағдарламаны оқыңыз.
+
+        import java.util.ArrayList;
+
+        class TizimMagnit {
+          public static void main(String[] args) {
+            ArrayList<String> t = new ArrayList<String>();
+            t.add("alma");
+            t.add("anar");
+            t.add(0, "banan");                       // 1-жол
+            t.add("shie");
+            t.remove(1);                             // 2-жол
+            int i = t.indexOf("alma");               // 3-жол
+            boolean bar = t.contains("anar");
+            if (t.indexOf("shie") != 2) {            // 4-жол
+              t.add(2, "juzim");
+            }
+            korset(t);
+          }
+
+          static void korset(ArrayList<String> list) {
+            for (String e : list) {
+              System.out.print(e + " ");
+            }
+            System.out.println();
+          }
+        }
+
+        1. 1-жол (t.add(0, "banan")) «banan» элементін тізімнің басына қояды да, бұрынғы элементтерді бір орынға ығыстырады, сондықтан 1-жолдан кейін t.get(1) «alma» қайтарады. (5 ұпай)
+        2. 2-жол (t.remove(1)) тізімнен «banan» элементін өшіреді, себебі ол тізімдегі бірінші элемент. (5 ұпай)
+        3. 3-жол орындалғанда бағдарлама қатемен (exception) тоқтайды, себебі «alma» бұл кезде тізімде жоқ. (5 ұпай)
+        4. 4-жолдағы if денесі орындалмайды, себебі осы сәтте «shie» элементінің индексі 2-ге тең. (5 ұпай)
+        5. bar айнымалысының мәні true болады, себебі «anar» элементі тізімде бар. (4 ұпай)
+    - id: J06-К-03
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Kamera {
+          int zoom;
+          boolean jaramdy() {
+            return zoom >= 3 && zoom <= 8;
+          }
+        }
+
+        public class Dukan {
+          java.util.ArrayList<Kamera> sore = new java.util.ArrayList<Kamera>();   // 1-жол
+
+          boolean tekser(Kamera k) {
+            if (k != null && k.jaramdy()) {          // 2-жол
+              return true;
+            }
+            return false;
+          }
+
+          public static void main(String[] args) {
+            Dukan d = new Dukan();
+            Kamera bos = null;
+            System.out.println(d.tekser(bos));       // 3-жол
+            String atau = "Kodak";                   // 4-жол
+            System.out.println(atau);
+          }
+        }
+
+        1. 1-жол import java.util.ArrayList; жолынсыз компиляцияланады, себебі класс толық атымен (full name) — java.util.ArrayList — жазылған. (5 ұпай)
+        2. Файлдың басына import java.util.ArrayList; қоссақ, Dukan.class файлы үлкейеді, себебі import ArrayList класының кодын біздің класқа қосады. (5 ұпай)
+        3. 3-жол false шығарады және NullPointerException болмайды, себебі && операторы сол жағы false болса, оң жағын (k.jaramdy()) тексермейді. (5 ұпай)
+        4. 2-жолдағы && операторын & операторына ауыстырсақ та, 3-жол бұрынғыдай false шығарады, себебі нәтиже бәрібір false. (5 ұпай)
+        5. 4-жолдағы String класын пайдалану үшін файлдың басына import java.lang.String; жазу міндетті. (4 ұпай)
+  functional:
+    heading: ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+    points: 32
+    instructions: |
+      Бағдарламаның орындалуын қадамдап бақылаңыз (trace). Кестенің әр жолы — бір оператор (statement). Әр жол орындалғаннан КЕЙІНГІ толық жағдайды жазыңыз: «Стек» бағанына — стектегі (stack) барлық фреймдерді және олардағы айнымалыларды, «Үйінді» бағанына — үйіндідегі (heap) барлық объектілерді. Әр жол — 4 ұпай (2 + 2).
+      Белгілеулер:
+      - сілтеме (reference) — a→1; бос сілтеме — b=null;
+      - үйіндідегі объект — 1 Alma объекті (salmaq=0);
+      - массив (array) — 1 It[] массив объекті: [0]→2, [1]=null;
+      - ArrayList объектісі — 1 ArrayList<Alma> объекті: [0]→3, [1]→2; бос тізім — 1 ArrayList<Alma> объекті: бос;
+      - бірде-бір сілтеме арқылы жетуге болмайтын объект — «— GC кандидаты»;
+      - стекте фреймдер жоғарыдан төмен жазылады, ең үстінде — қазір орындалып жатқан әдіс: tekser(): b=7 / main(): o→1; айнымалысы жоқ фрейм — getJas(): —;
+      - «(… ішінде)» — шақырылған әдістің денесіндегі оператор (return операторы да жеке жол);
+      - «(қайтқаннан кейін)» — әдіс аяқталып, оның нәтижесі айнымалыға меншіктелгеннен кейінгі жағдай (әдістің фреймі бұл кезде стекте жоқ);
+      - void әдісті шақыру жеке жол болып жазылмайды — тек оның денесіндегі операторлар жазылады;
+      - Java кітапханасының (Java API) әдістерін шақыру (add, remove, indexOf, get) — бір жол, олардың фреймі жазылмайды.
+    questions:
+    - id: J06-Ф-01
+      text: |
+        import java.util.ArrayList;
+
+        class Alma {
+          int salmaq;
+        }
+
+        class AlmaSebet {
+          public static void main(String[] args) {
+            ArrayList<Alma> sebet = new ArrayList<Alma>();
+            Alma a1 = new Alma();
+            sebet.add(a1);
+            sebet.add(0, new Alma());
+            int orny = sebet.indexOf(a1);
+            sebet.get(0).salmaq = 7;
+            sebet.remove(0);
+            a1 = null;
+          }
+        }
+
+        | № | Код                                             | Стек | Үйінді |
+        |---|-------------------------------------------------|------|--------|
+        | 1 | ArrayList<Alma> sebet = new ArrayList<Alma>();  |      |        |
+        | 2 | Alma a1 = new Alma();                           |      |        |
+        | 3 | sebet.add(a1);                                  |      |        |
+        | 4 | sebet.add(0, new Alma());                       |      |        |
+        | 5 | int orny = sebet.indexOf(a1);                   |      |        |
+        | 6 | sebet.get(0).salmaq = 7;                        |      |        |
+        | 7 | sebet.remove(0);                                |      |        |
+        | 8 | a1 = null;                                      |      |        |
+    - id: J06-Ф-02
+      text: |
+        import java.util.ArrayList;
+
+        class It {
+          int jas;
+        }
+
+        class ItTizim {
+          public static void main(String[] args) {
+            It[] qora = new It[2];
+            qora[0] = new It();
+            ArrayList<It> tizim = new ArrayList<It>();
+            tizim.add(qora[0]);
+            It d = qora[0];
+            qora[0] = null;
+            tizim.remove(d);
+            d = new It();
+          }
+        }
+
+        | № | Код                                          | Стек | Үйінді |
+        |---|----------------------------------------------|------|--------|
+        | 1 | It[] qora = new It[2];                       |      |        |
+        | 2 | qora[0] = new It();                          |      |        |
+        | 3 | ArrayList<It> tizim = new ArrayList<It>();   |      |        |
+        | 4 | tizim.add(qora[0]);                          |      |        |
+        | 5 | It d = qora[0];                              |      |        |
+        | 6 | qora[0] = null;                              |      |        |
+        | 7 | tizim.remove(d);                             |      |        |
+        | 8 | d = new It();                                |      |        |
+    - id: J06-Ф-03
+      text: |
+        import java.util.ArrayList;
+
+        class Startap {
+          int orny;
+
+          int tekser(int b) {
+            if (b == orny) {
+              return 2;                  // 2 — «kill»
+            }
+            return 0;                    // 0 — «miss»
+          }
+        }
+
+        public class Oiyn {
+          private ArrayList<Startap> startaptar = new ArrayList<Startap>();
+          int sanaq = 0;
+
+          void dayynda() {
+            Startap bir = new Startap();
+            bir.orny = 4;
+            Startap eki = new Startap();
+            eki.orny = 7;
+            startaptar.add(bir);
+            startaptar.add(eki);
+          }
+
+          void boljamTekser(int boljam) {
+            sanaq++;
+            int natije = 0;
+            for (Startap s : startaptar) {
+              natije = s.tekser(boljam);
+              if (natije == 2) {
+                startaptar.remove(s);
+                break;
+              }
+            }
+          }
+
+          public static void main(String[] args) {
+            Oiyn o = new Oiyn();
+            o.dayynda();
+            // ---- кесте осы жерден басталады ----
+            o.boljamTekser(7);
+            int k = o.sanaq;
+          }
+        }
+
+        Бастапқы жағдай (o.dayynda() орындалғаннан кейін):
+        Стек — main(): o→1
+        Үйінді — 1 Oiyn объекті (sanaq=0, startaptar→2); 2 ArrayList<Startap> объекті: [0]→3, [1]→4; 3 Startap объекті (orny=4); 4 Startap объекті (orny=7)
+        Нұсқау: «1-айналым», «2-айналым» — for циклінің бірінші және екінші қайталануы (iteration).
+
+        | № | Код                                                                              | Стек | Үйінді |
+        |---|----------------------------------------------------------------------------------|------|--------|
+        | 1 | (boljamTekser ішінде) sanaq++;                                                   |      |        |
+        | 2 | (boljamTekser ішінде) int natije = 0;                                            |      |        |
+        | 3 | (tekser ішінде, 1-айналым) return 0;                                             |      |        |
+        | 4 | (boljamTekser ішінде, 1-айналым) natije = s.tekser(boljam); (қайтқаннан кейін)   |      |        |
+        | 5 | (tekser ішінде, 2-айналым) return 2;                                             |      |        |
+        | 6 | (boljamTekser ішінде, 2-айналым) natije = s.tekser(boljam); (қайтқаннан кейін)   |      |        |
+        | 7 | (boljamTekser ішінде) startaptar.remove(s);                                      |      |        |
+        | 8 | int k = o.sanaq;                                                                 |      |        |
+  systemic:
+    heading: ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+    points: 44
+    instructions: |
+      Кодтағы ? белгісінің орнына қойылатын мән (әдіс аргументі, өріс мәні немесе массив мазмұны) — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+      1. кіріс мәні — әр ? орнына қандай мән қойылады;
+      2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек;
+      3. тест нені тексереді — қай орындалу жолын (path), тармақты (branch) немесе шекараны (boundary).
+
+      Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+    questions:
+    - id: J06-С-01
+      text: |
+        import java.util.ArrayList;
+
+        class Startap {
+          private ArrayList<String> uyashyqtar;
+
+          public void setUyashyqtar(ArrayList<String> u) {
+            uyashyqtar = u;
+          }
+
+          public String tekser(String boljam) {
+            String natije = "miss";
+            int index = uyashyqtar.indexOf(boljam);
+            if (index > 0) {
+              uyashyqtar.remove(index);
+              if (uyashyqtar.isEmpty()) {
+                natije = "kill";
+              } else {
+                natije = "hit";
+              }
+            }
+            return natije;
+          }
+        }
+
+        class StartapTest {
+          public static void main(String[] args) {
+            Startap s = new Startap();
+            String[] u = {?};              // тест кірісі: стартаптың ұяшықтары
+            ArrayList<String> orny = new ArrayList<String>();
+            for (String x : u) {
+              orny.add(x);
+            }
+            s.setUyashyqtar(orny);
+            String[] boljamdar = {?};      // тест кірісі: ойыншының болжамдары
+            for (String b : boljamdar) {
+              System.out.println(s.tekser(b));
+            }
+          }
+        }
+
+        Талап: стартап 1-ден 3-ке дейін ұяшықты (cell) алады; ұяшық атаулары кіші әріппен жазылады («a0»–«g6») және қайталанбайды. Әр болжам (guess) үшін бағдарлама бір жол шығарады: болжам стартаптың әлі тиілмеген ұяшығына тисе — «hit», ал бұл соңғы тиілмеген ұяшық болса — «kill»; болжам стартаптың ұяшығына тимесе немесе бұл ұяшыққа бұрын тиген болса — «miss». Болжамдар кіші әріппен беріледі.
+    - id: J06-С-02
+      text: |
+        class Kamera {
+          int baga;
+          String zoomTuri;               // "optical" немесе "digital"
+          int zoom;
+        }
+
+        class Dukenshi {
+          public String tanda(Kamera k) {
+            if (k.baga >= 300 && k.baga < 400) {
+              return "X";
+            }
+            if ((k.zoomTuri.equals("optical") && (k.zoom >= 3 && k.zoom <= 8)) ||
+                (k.zoomTuri.equals("digital") && (k.zoom > 5 && k.zoom <= 12))) {
+              return "Y";
+            }
+            return "Z";
+          }
+        }
+
+        class DukenshiTest {
+          public static void main(String[] args) {
+            Kamera k = new Kamera();
+            k.baga = ?;                    // тест кірісі: баға
+            k.zoomTuri = ?;                // тест кірісі: "optical" немесе "digital"
+            k.zoom = ?;                    // тест кірісі: зум
+            Dukenshi d = new Dukenshi();
+            System.out.println(d.tanda(k));
+          }
+        }
+
+        Талап: камераның бағасы 50-ден 1000-ға дейін, зум (zoom) 1-ден 20-ға дейін, зум түрі — "optical" немесе "digital". Бағасы 300-ден 400-ге дейін болса (300 кіреді, 400 кірмейді), бағдарлама «X» шығарады. Әйтпесе: оптикалық зум 3–8 аралығында немесе цифрлық зум 5–12 аралығында болса (шеткі мәндер екі жағынан да кіреді), «Y» шығарады. Қалған жағдайларда — «Z».
+    - id: J06-С-03
+      text: |
+        class Tor {
+          static final int UZYNDYQ = 7;          // бір қатардағы ұяшық саны
+          static final int OLSHEM = 49;          // тордағы ұяшық саны (7 x 7)
+          static final int KOLDENEN = 1;         // көлденең (horizontal) қадам
+          static final int TIK = UZYNDYQ;        // тік (vertical) қадам
+
+          int qatar(int index) {
+            return index / UZYNDYQ;
+          }
+
+          boolean syiady(int[] koord, int qadam) {
+            int songy = koord[koord.length - 1];
+            if (qadam == KOLDENEN) {
+              return qatar(koord[0]) == qatar(songy);
+            } else {
+              return songy <= OLSHEM;
+            }
+          }
+        }
+
+        class TorTest {
+          public static void main(String[] args) {
+            Tor t = new Tor();
+            int bastau = ?;                // тест кірісі: бірінші ұяшық (0–48)
+            int qadam = ?;                 // тест кірісі: 1 (көлденең) немесе 7 (тік)
+            int[] koord = new int[3];
+            int orny = bastau;
+            for (int i = 0; i < koord.length; i++) {
+              koord[i] = orny;
+              orny = orny + qadam;
+            }
+            System.out.println(t.syiady(koord, qadam));
+          }
+        }
+
+        Талап: тор (grid) 7 × 7, ұяшықтар 0-ден 48-ге дейін нөмірленеді: 0–6 — бірінші қатар (row), 7–13 — екінші қатар, т.с.с. Стартап 3 ұяшық алады. Көлденең (qadam = 1) орналастырғанда үш ұяшық бір қатарда болса — true, әйтпесе false. Тік (qadam = 7) орналастырғанда үш ұяшықтың бәрі тордың ішінде (0–48) болса — true, әйтпесе false.

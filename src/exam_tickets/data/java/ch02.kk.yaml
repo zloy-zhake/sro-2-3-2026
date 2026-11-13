@@ -1,0 +1,360 @@
+subject: java
+language: kk
+file_chapter: 2
+chapters:
+- 2
+chapter_titles:
+- A Trip to Objectville
+levels:
+  cognitive:
+    heading: КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+    points: 24
+    instructions: |
+      Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+    questions:
+    - id: J02-К-01
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Podcast {
+          String host;
+          int episodes;
+
+          void listen() {
+            System.out.println("Подкаст ойнап тұр");
+          }
+
+          void showInfo() {
+            System.out.println("Жүргізуші: " + host + ", шығарылым: " + episodes);
+          }
+        }
+
+        class PodcastTestDrive {
+          public static void main(String[] args) {
+            Podcast pod;
+            pod.host = "Айдос";
+            pod.episodes = 12;
+            pod.listen();
+            pod.showInfo();
+          }
+        }
+
+        1. Код компиляцияланбайды (compile error), себебі pod айнымалысы жарияланған (declared), бірақ оған new арқылы объект (object) құрылмаған. (5 ұпай)
+        2. host пен episodes — main() әдісінің (method) локальді айнымалылары (local variables). (5 ұпай)
+        3. Podcast класында (class) main() әдісі жоқ болғандықтан, Podcast класы бөлек файлда тұрса да компиляцияланбайды. (5 ұпай)
+        4. «Podcast pod;» жолын «Podcast pod = new Podcast();» деп ауыстырып, «pod.host = "Айдос";» жолын өшірсек, код компиляцияланбайды, себебі host өрісіне мән берілмеген. (5 ұпай)
+        5. listen() және showInfo() — Podcast класының әдістері (methods). (4 ұпай)
+    - id: J02-К-02
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Lesson {
+          int number;
+          int minutes;
+
+          void start() {
+            System.out.println("Сабақ басталды");
+          }
+
+          void finish() {
+            System.out.println("Сабақ " + number + " аяқталды");
+          }
+        }
+
+        class Quiz {
+          int questions;
+
+          void check() {
+            System.out.println("Тест тексерілді: " + questions + " сұрақ");
+          }
+        }
+
+        class LessonTestDrive {
+          public static void main(String[] args) {
+            Lesson les = new Lesson();
+            les.number = 7;
+            les.minutes = 45;
+            les.start();
+            les.check();
+            les.finish();
+          }
+        }
+
+        1. Код компиляцияланбайды, себебі check() әдісі (method) Quiz класында жарияланған, ал les айнымалысы Lesson типті. (5 ұпай)
+        2. «les.check();» жолын өшірсек, finish() әдісі «Сабақ 0 аяқталды» деп шығарады, себебі number өрісі әдепкі мәнінде (default value) қалады. (5 ұпай)
+        3. «les.minutes = 45;» жолы Lesson класының барлық объектілерінде (objects) minutes өрісін 45-ке өзгертеді. (5 ұпай)
+        4. «les.check();» жолын «Quiz q = new Quiz(); q.check();» деп ауыстырсақ, код компиляцияланады және «Тест тексерілді: 0 сұрақ» жолын шығарады. (5 ұпай)
+        5. les айнымалысы Lesson типті объектімен жұмыс істеу үшін қолданылады, ал оның өрістеріне нүкте операторы (dot operator) арқылы қол жеткізіледі. (4 ұпай)
+    - id: J02-К-03
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Robot {
+          int battery;
+          String model;
+
+          void beep() {
+            System.out.println("Бип! Заряд: " + battery);
+          }
+        }
+
+        class RobotTestDrive {
+          public static void main(String[] args) {
+            Robot r = new Robot();
+            r.battery = 80;
+            r.beep();
+            Robot q = new Robot();
+            q.model = "R2";
+            q.beep();
+            System.out.println(r.model);
+          }
+        }
+
+        1. q.beep() шақыруы «Бип! Заряд: 80» деп шығарады, себебі q объектісі battery мәнін r объектісінен алады. (5 ұпай)
+        2. Соңғы жол null шығарады, себебі r объектісінің model өрісіне мән берілмеген. (5 ұпай)
+        3. «r.battery = 80;» жолын «battery = 80;» деп жазсақ та, код компиляцияланады, себебі battery — Robot класының өрісі. (5 ұпай)
+        4. Robot класынан тек бір объект құруға болады, сондықтан «Robot q = new Robot();» жолы компиляция қатесін (compile error) береді. (5 ұпай)
+        5. battery және model — Robot класының дана айнымалылары (instance variables). (4 ұпай)
+  functional:
+    heading: ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+    points: 32
+    instructions: |
+      Бағдарламаның орындалуын қадамдап бақылаңыз (trace). Кестенің әр жолы — бір оператор (statement). Әр жол орындалғаннан КЕЙІНГІ толық жағдайды жазыңыз: «Стек» бағанына — стектегі (stack) барлық айнымалыларды, «Үйінді» бағанына — үйіндідегі (heap) барлық объектілерді. Әр жол — 4 ұпай (2 + 2).
+      Белгілеулер:
+      - сілтеме (reference) — a→1; бос сілтеме — b=null;
+      - үйіндідегі объект — 1 Film объекті (year=0, rating=0);
+      - бірде-бір сілтеме қалмаған объект — «— GC кандидаты»;
+      - стекте фреймдер жоғарыдан төмен жазылады: start(): x=4 / main(): …
+    questions:
+    - id: J02-Ф-01
+      text: |
+        class Film {
+          int year;
+          int rating;
+        }
+
+        class FilmTestDrive {
+          public static void main(String[] args) {
+            Film one = new Film();
+            one.rating = 3;
+            Film two = new Film();
+            two.year = 2020;
+            two.rating = one.rating + 2;
+            Film three = new Film();
+            three.year = two.year - 5;
+            one = new Film();
+          }
+        }
+
+        | № | Код                              | Стек | Үйінді |
+        |---|----------------------------------|------|--------|
+        | 1 | Film one = new Film();           |      |        |
+        | 2 | one.rating = 3;                  |      |        |
+        | 3 | Film two = new Film();           |      |        |
+        | 4 | two.year = 2020;                 |      |        |
+        | 5 | two.rating = one.rating + 2;     |      |        |
+        | 6 | Film three = new Film();         |      |        |
+        | 7 | three.year = two.year - 5;       |      |        |
+        | 8 | one = new Film();                |      |        |
+    - id: J02-Ф-02
+      text: |
+        Бағдарлама ContestLauncher класынан басталады. Жолдар орындалу ретімен берілген. 2-жол үшін start() әдісіне кірген сәттегі жағдайды, қалған жолдар үшін сол жол орындалғаннан кейінгі жағдайды жазыңыз. Айнымалы стекте ме, әлде объектінің ішінде (үйіндіде) ме — мұқият болыңыз.
+
+        class Player {
+          int number;
+        }
+
+        class Contest {
+          Player p1;
+          Player p2;
+
+          void start() {
+            p1 = new Player();
+            p2 = new Player();
+            int guess1 = 0;
+            p1.number = 7;
+            guess1 = p1.number;
+            p2 = p1;
+          }
+        }
+
+        class ContestLauncher {
+          public static void main(String[] args) {
+            Contest game = new Contest();
+            game.start();
+          }
+        }
+
+        | № | Код                              | Стек | Үйінді |
+        |---|----------------------------------|------|--------|
+        | 1 | Contest game = new Contest();    |      |        |
+        | 2 | game.start();                    |      |        |
+        | 3 | p1 = new Player();               |      |        |
+        | 4 | p2 = new Player();               |      |        |
+        | 5 | int guess1 = 0;                  |      |        |
+        | 6 | p1.number = 7;                   |      |        |
+        | 7 | guess1 = p1.number;              |      |        |
+        | 8 | p2 = p1;                         |      |        |
+    - id: J02-Ф-03
+      text: |
+        Әдіс шақырылатын жолдар (click()) үшін әдіс аяқталғаннан кейінгі жағдайды жазыңыз. Бір объектіге екі сілтеме болуы мүмкін екенін ескеріңіз.
+
+        class Clicker {
+          int count = 0;
+
+          void click() {
+            count = count + 1;
+          }
+        }
+
+        class ClickerTestDrive {
+          public static void main(String[] args) {
+            Clicker c1 = new Clicker();
+            Clicker c2 = new Clicker();
+            c1.click();
+            c2.count = c1.count + 2;
+            c2 = c1;
+            c2.click();
+            c1.count = c1.count + c2.count;
+            Clicker c3 = c2;
+          }
+        }
+
+        | № | Код                                  | Стек | Үйінді |
+        |---|--------------------------------------|------|--------|
+        | 1 | Clicker c1 = new Clicker();          |      |        |
+        | 2 | Clicker c2 = new Clicker();          |      |        |
+        | 3 | c1.click();                          |      |        |
+        | 4 | c2.count = c1.count + 2;             |      |        |
+        | 5 | c2 = c1;                             |      |        |
+        | 6 | c2.click();                          |      |        |
+        | 7 | c1.count = c1.count + c2.count;      |      |        |
+        | 8 | Clicker c3 = c2;                     |      |        |
+  systemic:
+    heading: ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+    points: 44
+    instructions: |
+      Кодтағы ? белгісінің орнына қойылатын бастапқы мән — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+      1. кіріс мәні — әр ? орнына қандай мән қойылады;
+      2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек;
+      3. тест нені тексереді — қай орындалу жолын (path), тармақты (branch) немесе шекараны (boundary).
+
+      Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+    questions:
+    - id: J02-С-01
+      text: |
+        class Player {
+          int number;
+        }
+
+        class Round {
+          Player p1;
+          Player p2;
+          Player p3;
+
+          void play() {
+            p1 = new Player();
+            p2 = new Player();
+            p3 = new Player();
+            int target = ?;          // ойыншылар табуы керек сан, 0–9 (тест кірісі)
+            p1.number = ?;           // 1-ойыншының болжамы (тест кірісі)
+            p2.number = ?;           // 2-ойыншының болжамы (тест кірісі)
+            p3.number = ?;           // 3-ойыншының болжамы (тест кірісі)
+
+            int guessp1 = p1.number;
+            int guessp2 = p2.number;
+            int guessp3 = p2.number;
+
+            boolean p1isRight = false;
+            boolean p2isRight = false;
+            boolean p3isRight = false;
+
+            if (guessp1 == target) {
+              p1isRight = true;
+            }
+            if (guessp2 == target) {
+              p2isRight = true;
+            }
+            if (guessp3 == target) {
+              p3isRight = true;
+            }
+
+            if (p1isRight || p2isRight || p3isRight) {
+              System.out.println("Жеңімпаз бар!");
+              System.out.println("1-ойыншы тапты ма? " + p1isRight);
+              System.out.println("2-ойыншы тапты ма? " + p2isRight);
+              System.out.println("3-ойыншы тапты ма? " + p3isRight);
+            } else {
+              System.out.println("Ешкім таппады");
+            }
+          }
+        }
+
+        class RoundLauncher {
+          public static void main(String[] args) {
+            Round r = new Round();
+            r.play();
+          }
+        }
+
+        Талап: болжамы target-ке тең ойыншы «тапты» (true), басқалары — false. Кем дегенде бір ойыншы тапса, «Жеңімпаз бар!» жолы және әр ойыншының нәтижесі (true/false) шығады. Ешкім таппаса — тек «Ешкім таппады».
+    - id: J02-С-02
+      text: |
+        class Shout {
+          int count = 0;
+
+          void hello() {
+            System.out.println("сәлееем...");
+          }
+        }
+
+        class ShoutTestDrive {
+          public static void main(String[] args) {
+            int times = ?;           // қанша рет айқайлаймыз (тест кірісі)
+            Shout e1 = new Shout();  // айқай санауышы
+            Shout e2 = new Shout();  // ұпай санауышы
+            int x = 0;
+            while (x < times) {
+              e1.hello();
+              e1.count = e1.count + 1;
+              if (x == 3) {          // үшінші айқайда бонус
+                e2.count = e2.count + 4;
+              }
+              if (x > 0) {
+                e2.count = e2.count + e1.count;
+              }
+              x = x + 1;
+            }
+            System.out.println(e1.count + " " + e2.count);
+          }
+        }
+
+        Талап: әр айқайда «сәлееем...» жолы шығады. e1.count — айқай саны. e2.count — ұпай: екінші айқайдан бастап әр айқайда ұпайға сол сәттегі айқай саны қосылады; үшінші айқайда қосымша +4 бонус беріледі. Соңында «айқай_саны ұпай» жолы шығады.
+    - id: J02-С-03
+      text: |
+        class Movie {
+          int rating;
+
+          void showStars() {
+            if (rating < 0 || rating > 5) {
+              System.out.println("Қате рейтинг: " + rating);
+            } else {
+              int i = 0;
+              while (i < rating) {
+                System.out.print("*");
+                i = i + 1;
+              }
+              System.out.println();
+            }
+          }
+        }
+
+        class MovieTestDrive {
+          public static void main(String[] args) {
+            Movie one = new Movie();
+            one.rating = ?;          // фильм рейтингі (тест кірісі)
+            one.showStars();
+          }
+        }
+
+        Талап: рейтинг 1-ден 5-ке дейін болуы керек. Рейтинг дұрыс болса, бір жолда сонша жұлдыз (*) шығады. Әйтпесе «Қате рейтинг: N» жолы шығады, мұнда N — рейтинг мәні.

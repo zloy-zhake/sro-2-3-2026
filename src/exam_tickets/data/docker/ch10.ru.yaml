@@ -1,0 +1,956 @@
+subject: docker
+language: ru
+file_chapter: 10
+chapters:
+- 10
+chapter_titles:
+- Running multiple environments with Docker Compose
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      Глава 10. Running multiple environments with Docker Compose.
+
+      Инструкция для студента.
+      Вам предъявлены три независимых фрагмента из главы 10: наборы файлов Docker
+      Compose (основной файл, override-файлы, файл переменных `.env`, файлы
+      конфигурации приложения) и команды, которые с этими файлами запускаются.
+      Рядом с каждым фрагментом описано исходное состояние: что уже есть на
+      компьютере (какие образы, контейнеры, сети), какие файлы созданы, какие
+      порты свободны. Всё, что нужно для ответа, дано в условии: компьютер на
+      экзамене нет, решаем на бумаге, Docker запускать не нужно.
+
+      Задание в каждом вопросе одно и то же: по пяти утверждениям о своём фрагменте
+      определите, верно оно или неверно, и обоснуйте ответ. В обосновании нужно
+      назвать правило Docker Compose, на которое опирается ответ, и показать, как
+      это правило действует именно на данном фрагменте: указать конкретные файлы,
+      ключи и значения из условия.
+
+      Баллы: утверждения 1–4 — по 5 баллов (1 балл за ответ «верно/неверно» +
+      4 балла за обоснование); утверждение 5 — 4 балла (1 балл за ответ + 3 балла
+      за обоснование). Итого 24 балла за уровень.
+      Задания независимы: каждое опирается на свой фрагмент, порядок разбора
+      вопросов значения не имеет.
+    questions:
+    - id: D10-К-01
+      text: |
+        Фрагмент.
+        Исходное состояние: Docker Engine установлен и запущен. Образы
+        d10k/q1-journal-web:1.0, d10k/q1-journal-web:1.0-dev и d10k/q1-journal-web:1.2
+        собраны заранее и есть локально; контейнеров, сетей и томов этого проекта на
+        компьютере нет; свободны порты 8500 и 8510. Каталог `journal/` содержит три
+        compose-файла, других compose-файлов в нём нет, файла `.env` нет.
+
+        Приложение — маленький HTTP-сервер на Python (образы собраны из
+        python:3.12-alpine). Он слушает порт 8500 внутри контейнера и при старте
+        печатает в журнал строки:
+          port=8500
+          storage=<значение переменной Journal__Storage>
+          log=<значение переменной Journal__LogLevel>
+
+        Файл journal/docker-compose.yml (основной файл):
+        services:
+          journal-web:
+            image: d10k/q1-journal-web:1.0
+            ports:
+              - 8500
+            environment:
+              - Journal__Storage=file
+              - Journal__LogLevel=Information
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл journal/docker-compose-local.yml (override для локальной разработки):
+        services:
+          journal-web:
+            image: d10k/q1-journal-web:1.0-dev
+            environment:
+              - Journal__LogLevel=Debug
+
+        Файл journal/docker-compose-prod.yml (override для продуктивной среды):
+        services:
+          journal-web:
+            image: d10k/q1-journal-web:1.2
+
+        Команда, которую студент мысленно выполняет из каталога, содержащего папку
+        `journal/`:
+        docker compose -f ./journal/docker-compose.yml -f ./journal/docker-compose-local.yml -f ./journal/docker-compose-prod.yml config
+
+        Задание. Верно или неверно и почему?
+        1. В override-файле `journal/docker-compose-local.yml` блок `journal-web` записан внутри раздела `services:` — только так Compose сопоставляет override-файлу определение сервиса из основного файла (по пути `services` → имя сервиса → имя свойства); если записать `journal-web:` сразу на верхнем уровне файла, Compose не найдёт сервис в основном файле и нужного объединения не получится. (5 баллов)
+        2. После слияния трёх файлов итоговый образ сервиса `journal-web` будет `d10k/q1-journal-web:1.0-dev`, потому что файл `docker-compose-local.yml` указан в списке `-f` раньше `docker-compose-prod.yml`. (5 баллов)
+        3. Команда `config` развернёт сервис `journal-web`, опубликует на хосте порт 8500 и создаст сеть `app-net` — это «сухой запуск» приложения. (5 баллов)
+        4. Переменная `Journal__LogLevel` в итоговой конфигурации останется равной `Information`, потому что override-файлы только дополняют основной файл, но не могут переопределять значения, уже заданные в разделе `environment`. (5 баллов)
+        5. Свойства, которые override-файл не перечисляет, Compose берёт из основного файла: в итоговой конфигурации у сервиса `journal-web` сохранятся строка `ports: - 8500`, переменная `Journal__Storage=file` и сеть `app-net`. (4 балла)
+    - id: D10-К-02
+      text: |
+        Фрагмент.
+        Исходное состояние: Docker Engine установлен и запущен. Образы
+        d10k/q2-tasks-web:1.0 и postgres:16-alpine есть локально; контейнеров, сетей и
+        томов этого проекта на компьютере нет; свободны порты 8521 и 8543; стенд —
+        Linux. Каталог `tasks/` содержит два compose-файла, файл `.env` и подкаталог
+        `config/`.
+
+        Приложение — маленький HTTP-сервер на Python (образ собран из
+        python:3.12-alpine). Он слушает порт 8080 внутри контейнера и при старте
+        печатает в журнал строки:
+          port=8080
+          provider=<значение переменной Tasks__Provider>
+          log=<значение переменной Tasks__LogLevel>
+          secret=<путь файла конфигурации, который приложение нашло> или secret=not found
+
+        Файл tasks/docker-compose.yml (основной файл):
+        services:
+          tasks-web:
+            image: d10k/q2-tasks-web:1.0
+            secrets:
+              - source: tasks-db-connection
+                target: /app/config/secrets.json
+
+        Файл tasks/docker-compose-test.yml (override для тестовой среды):
+        services:
+          tasks-web:
+            ports:
+              - "${TASKS_WEB_PORT}:8080"
+            environment:
+              - Tasks__Provider=Postgres
+            env_file:
+              - ./config/logging.information.env
+
+          tasks-db:
+            image: postgres:16-alpine
+            ports:
+              - "${TASKS_DB_PORT}:5432"
+            environment:
+              - POSTGRES_PASSWORD=postgres
+              - POSTGRES_DB=tasks
+
+        secrets:
+          tasks-db-connection:
+            file: ./config/secrets.json
+
+        Файл tasks/config/logging.information.env:
+        Tasks__LogLevel=Information
+        Tasks__Trace=false
+
+        Файл tasks/config/secrets.json:
+        {
+          "ConnectionStrings": {
+            "TasksDb": "Server=tasks-db;Database=tasks;User Id=postgres;Password=postgres;"
+          }
+        }
+
+        Файл tasks/.env:
+        # container configuration - ports to publish:
+        TASKS_WEB_PORT=8521
+        TASKS_DB_PORT=8543
+
+        # compose configuration - files and project name:
+        COMPOSE_PATH_SEPARATOR=:
+        COMPOSE_FILE=docker-compose.yml:docker-compose-test.yml
+        COMPOSE_PROJECT_NAME=tasks-ch10
+
+        Команда, которую студент мысленно выполняет из каталога `tasks/`:
+        docker compose up -d
+
+        Задание. Верно или неверно и почему?
+        1. Файл `.env` задаёт только значения для контейнера; переменные `COMPOSE_FILE` и `COMPOSE_PROJECT_NAME` из него Compose при запуске без ключей `-f` и `-p` игнорирует, поэтому набор файлов и имя проекта всегда задаются только в командной строке. (5 баллов)
+        2. Compose читает `.env` из текущего каталога автоматически, и имя файла фиксировано: переименовать `.env` и подключить файл переменных под другим именем нельзя. (5 баллов)
+        3. Если одна и та же переменная задана и в `environment`, и в `env_file`, то в контейнер попадёт значение из `env_file`, потому что файл с переменными загружается позже. (5 баллов)
+        4. Секрет `tasks-db-connection` попадёт в контейнер веб-приложения файлом по пути `/app/config/secrets.json`: в `source` указано имя секрета из раздела верхнего уровня `secrets`, а `target` задаёт путь, по которому файл появится внутри контейнера. (5 баллов)
+        5. Значение `TASKS_WEB_PORT=8521` из `.env` подставится в строку `ports: - "${TASKS_WEB_PORT}:8080"`, поэтому веб-приложение будет опубликовано на хосте на порту 8521. (4 балла)
+    - id: D10-К-03
+      text: |
+        Фрагмент.
+        Исходное состояние: Docker Engine установлен и запущен. Образ
+        d10k/q3-photos-web:1.0 собран заранее и есть локально; контейнеров, сетей и
+        томов этого проекта на компьютере нет; свободен порт 8610; переменная
+        `GALLERY_METRICS_URL` в окружении студента не задана. Каталог `gallery/`
+        содержит два compose-файла, других compose-файлов в нём нет.
+
+        Приложение — маленький HTTP-сервер на Python (образ собран из
+        python:3.12-alpine). Он слушает порт 8080 внутри контейнера и при старте
+        печатает в журнал строки:
+          port=8080
+          metrics_url=<значение переменной GALLERY_METRICS_URL>
+
+        Файл gallery/docker-compose.yml (основной файл):
+        services:
+          photos:
+            image: d10k/q3-photos-web:1.0
+            environment:
+              - GALLERY_METRICS_URL=${GALLERY_METRICS_URL}
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл gallery/docker-compose-prod.yml (override для продуктивной среды):
+        x-logging: &logging
+          logging:
+            options:
+              max-size: '50m'
+              max-file: '5'
+
+        x-labels: &labels
+          app-name: photo-gallery
+
+        services:
+          photos:
+            ports:
+              - 8610:8080
+            <<: *logging
+            labels:
+              <<: *labels
+              public: web
+
+        networks:
+          app-net:
+            name: photo-gallery-prod
+
+        Команда, которую студент мысленно выполняет из каталога, содержащего папку
+        `gallery/`:
+        docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-prod.yml config
+
+        Задание. Верно или неверно и почему?
+        1. Расширение `x-logging` можно объявить в основном файле `docker-compose.yml`, а затем использовать его в override-файле `docker-compose-prod.yml` через `<<: *logging`: Compose объединит файлы и подставит значение якоря. (5 баллов)
+        2. После слияния у сервиса `photos` появятся блок `logging` с опциями `max-size: '50m'` и `max-file: '5'` и две метки — `app-name: photo-gallery` и `public: web`. (5 баллов)
+        3. Строку `<<: *logging` нужно писать внутри блока `logging` сервиса: расширение `x-logging` содержит только параметры журналирования, а самого раздела `logging` в нём нет. (5 баллов)
+        4. Предупреждение о незаданной переменной `GALLERY_METRICS_URL` прервёт выполнение команды `config`, и итоговая конфигурация напечатана не будет. (5 баллов)
+        5. Расширения объявляются на верхнем уровне compose-файла, вне разделов `services` и `networks`, и по соглашению получают имя с префиксом `x-`. (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Инструкция студенту. Дана последовательность из 8 параметров конфигурации
+      проекта Docker Compose (project) и набор файлов, из которых Compose
+      собирает итоговую конфигурацию. Первый столбец таблицы заполнен. Заполните
+      два других столбца для каждой строки:
+        - «Итоговое значение после слияния и подстановки» — значение параметра
+          в итоговой (слитой) конфигурации, записанное точно, как в условии
+          (например `8471 → 8080`, `Postgres`, `d10f/q3-wx-web:1.0`,
+          `отключена`, `2 сервиса: wx-api и wx-web`);
+        - «Откуда взято значение» — какой файл (`docker-compose.yml`,
+          `docker-compose-dev.yml`, `docker-compose-test.yml`, `.env`,
+          `config/...`) или какая переменная (`COMPOSE_FILE`,
+          `COMPOSE_PROJECT_NAME`, `TODO_WEB_PORT`) даёт это значение. Если
+          параметр пришёл из ядра, а в override-файле его нет, — так и напишите.
+      Учитывайте: compose-файлы сливаются в том порядке, в каком перечислены
+      (файл справа перекрывает файл слева); переменные из `.env` подставляются в
+      compose-файлы; имя сервиса в сети проекта работает как DNS-имя.
+      Оценка: 8 строк по 4 балла (2 балла — итоговое значение, 2 балла — источник
+      значения). Итого 32 балла. Ответ поясните устно.
+    questions:
+    - id: D10-Ф-01
+      text: |
+        Фрагмент.
+        Исходное состояние:
+        - компьютер с Linux и Docker Engine; в локальном кэше образов (image cache)
+          есть два образа: `d10f/q1-rng-api:1.0` и `d10f/q1-rng-web:1.0` — это два
+          маленьких HTTP-сервера на Python; других образов нет;
+        - оба образа устроены одинаково: внутри контейнера сервер слушает порт 8080,
+          команда запуска — `python app.py`, в образе `d10f/q1-rng-api:1.0` есть файл
+          `/app/healthcheck.py` (он делает HTTP-запрос к `http://localhost:8080/healthz`
+          и при успешном ответе завершается с кодом 0), в образе
+          `d10f/q1-rng-web:1.0` такого файла нет;
+        - контейнеров (containers) нет, сетей (networks) нет;
+        - каталог с compose-файлами называется `d10f-q1`; имя проекта Compose
+          (project) в команде указано явно — `-p d10f-q1`;
+        - порты 8471 и 8472 компьютера свободны.
+
+        Приложение запускается командой:
+
+        docker compose -f ./docker-compose.yml -f ./docker-compose-dev.yml -p d10f-q1 up -d
+
+        Файл docker-compose.yml в каталоге d10f-q1 (ядро приложения):
+
+        services:
+
+          rng-api:
+            image: d10f/q1-rng-api:1.0
+            healthcheck:
+              test: ["CMD", "python", "/app/healthcheck.py"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+            networks:
+              - app-net
+
+          rng-web:
+            image: d10f/q1-rng-web:1.0
+            environment:
+              - RngApi__Url=http://rng-api:8080/rng
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл docker-compose-dev.yml в том же каталоге (override-файл окружения
+        разработки):
+
+        services:
+          rng-api:
+            ports:
+              - "8471:8080"
+            healthcheck:
+              disable: true
+
+          rng-web:
+            entrypoint:
+              - python
+              - app.py
+            ports:
+              - "8472:8080"
+
+        networks:
+          app-net:
+            name: rng-dev
+
+        Задание. Заполните таблицу: первый столбец уже заполнен, в двух других
+        столбцах запишите итоговое значение параметра после слияния файлов и
+        подстановки переменных и укажите, откуда взялось значение.
+
+        | № | Параметр конфигурации | Итоговое значение после слияния и подстановки | Откуда взято значение (файл или переменная) |
+        |---|----------------------|----------------------------------------|------------------------------------------|
+        | 1 | Образы сервисов rng-api и rng-web |   |   |
+        | 2 | Опубликованный порт сервиса rng-api (порт компьютера → порт контейнера) |   |   |
+        | 3 | Опубликованный порт сервиса rng-web (порт компьютера → порт контейнера) |   |   |
+        | 4 | Проверка работоспособности (health check) сервиса rng-api |   |   |
+        | 5 | Точка входа (entrypoint) сервиса rng-web |   |   |
+        | 6 | Имя сети (network), в которую подключаются оба сервиса |   |   |
+        | 7 | Сколько сервисов в итоговой конфигурации |   |   |
+        | 8 | DNS-имя, по которому rng-web обращается к rng-api |   |   |
+
+        Баллы: 32 (8 строк × 4).
+    - id: D10-Ф-02
+      text: |
+        Фрагмент.
+        Исходное состояние:
+        - компьютер с Linux и Docker Engine; в локальном кэше образов (image cache)
+          есть образ `d10f/q2-todo-web:1.0` (маленький HTTP-сервер на Python,
+          внутри контейнера слушает порт 8080, читает настройки из переменных
+          окружения и из файла `/app/config/db.json`) и образ `postgres:16-alpine`;
+        - контейнеров (containers) нет, сетей (networks) нет, томов (volumes) нет;
+        - каталог с compose-файлами называется `d10f-q2-app`; команда запускается
+          из этого каталога, без ключей `-f` и без `-p`;
+        - в оболочке (shell) переменных `TODO_WEB_PORT`, `TODO_DB_PORT`,
+          `COMPOSE_FILE`, `COMPOSE_PROJECT_NAME` и `COMPOSE_PATH_SEPARATOR` нет;
+        - порты 8477, 8478 и 8479 компьютера свободны.
+
+        Приложение запускается командой:
+
+        cd ./d10f-q2-app
+        docker compose up -d
+
+        Файл docker-compose.yml в каталоге d10f-q2-app (ядро приложения):
+
+        services:
+
+          todo-web:
+            image: d10f/q2-todo-web:1.0
+            secrets:
+              - source: todo-db-connection
+                target: /app/config/db.json
+
+        Файл docker-compose-dev.yml в том же каталоге (override-файл окружения
+        разработки):
+
+        services:
+          todo-web:
+            ports:
+              - "8479:8080"
+            environment:
+              - Database:Provider=Sqlite
+            env_file:
+              - ./config/logging.verbose.env
+
+        secrets:
+          todo-db-connection:
+            file: ./config/empty.json
+
+        Файл docker-compose-test.yml в том же каталоге (override-файл тестового
+        окружения):
+
+        services:
+          todo-web:
+            ports:
+              - "${TODO_WEB_PORT}:8080"
+            environment:
+              - Database:Provider=Postgres
+            env_file:
+              - ./config/logging.quiet.env
+            networks:
+              - app-net
+
+          todo-db:
+            image: postgres:16-alpine
+            environment:
+              - POSTGRES_DB=todo
+              - POSTGRES_USER=todo
+              - POSTGRES_PASSWORD=todo
+            ports:
+              - "${TODO_DB_PORT}:5432"
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+            name: d10f-q2-test
+
+        secrets:
+          todo-db-connection:
+            file: ./config/db-connection.json
+
+        Файл .env в том же каталоге:
+
+        # container configuration - ports to publish:
+        TODO_WEB_PORT=8477
+        TODO_DB_PORT=8478
+
+        # compose configuration - files and project name:
+        COMPOSE_PATH_SEPARATOR=:
+        COMPOSE_FILE=docker-compose.yml:docker-compose-test.yml
+        COMPOSE_PROJECT_NAME=d10f-q2
+
+        Файлы конфигурации приложения в подкаталоге config:
+
+        config/logging.verbose.env:
+
+        Logging__LogLevel__Default=Debug
+        Logging__LogLevel__System=Debug
+        Logging__LogLevel__Microsoft=Debug
+
+        config/logging.quiet.env:
+
+        Logging__LogLevel__Default=Information
+        Logging__LogLevel__System=Warning
+        Logging__LogLevel__Microsoft=Warning
+
+        config/empty.json:
+
+        {}
+
+        config/db-connection.json:
+
+        {
+          "ConnectionStrings": {
+            "ToDoDb": "Server=todo-db;Database=todo;User Id=todo;Password=todo;"
+          }
+        }
+
+        Задание. Заполните таблицу: первый столбец уже заполнен, в двух других
+        столбцах запишите итоговое значение параметра после слияния файлов и
+        подстановки переменных и укажите, откуда взялось значение.
+
+        | № | Параметр конфигурации | Итоговое значение после слияния и подстановки | Откуда взято значение (файл или переменная) |
+        |---|----------------------|----------------------------------------|------------------------------------------|
+        | 1 | Какие compose-файлы слил Compose при `docker compose up -d` (и какие не слил) |   |   |
+        | 2 | Имя проекта Compose (project) |   |   |
+        | 3 | Опубликованные порты сервисов todo-web и todo-db (порт компьютера → порт контейнера) |   |   |
+        | 4 | Значение Database:Provider внутри контейнера todo-web |   |   |
+        | 5 | Файл с переменными логирования (env_file) и его содержимое: какие переменные попадут в контейнер |   |   |
+        | 6 | Секрет: имя источника (source), путь внутри контейнера (target) и файл-источник на диске |   |   |
+        | 7 | Имя сети (network) проекта |   |   |
+        | 8 | Состав сервисов в итоговой конфигурации |   |   |
+
+        Баллы: 32 (8 строк × 4).
+    - id: D10-Ф-03
+      text: |
+        Фрагмент.
+        Исходное состояние:
+        - компьютер с Linux и Docker Engine; в локальном кэше образов (image cache)
+          есть два образа: `d10f/q3-wx-api:1.0` и `d10f/q3-wx-web:1.0` — это два
+          маленьких HTTP-сервера на Python; других образов нет;
+        - оба образа устроены одинаково: внутри контейнера сервер слушает порт 8080,
+          команда запуска — `python app.py`, в обоих образах есть файл
+          `/app/healthcheck.py` (он делает HTTP-запрос к `http://localhost:8080/healthz`
+          и при успешном ответе завершается с кодом 0);
+        - контейнеров (containers) нет, сетей (networks) нет;
+        - каталог с compose-файлами называется `d10f-q3`; имя проекта Compose
+          (project) в команде указано явно — `-p d10f-q3`;
+        - порт 8480 компьютера свободен.
+
+        Приложение запускается командой:
+
+        docker compose -f ./docker-compose.yml -f ./docker-compose-test.yml -p d10f-q3 up -d
+
+        Файл docker-compose.yml в каталоге d10f-q3 (ядро приложения):
+
+        services:
+
+          wx-api:
+            image: d10f/q3-wx-api:1.0
+            healthcheck:
+              test: ["CMD", "python", "/app/healthcheck.py"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+            networks:
+              - app-net
+
+          wx-web:
+            image: d10f/q3-wx-web:1.0
+            environment:
+              - WxApi__Url=http://wx-api:8080/forecast
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл docker-compose-test.yml в том же каталоге (override-файл тестового
+        окружения):
+
+        services:
+          wx-api:
+            healthcheck:
+              test: ["CMD", "python", "/app/healthcheck.py"]
+              interval: 25s
+              timeout: 12s
+              retries: 5
+              start_period: 20s
+
+          wx-web:
+            ports:
+              - "8480:8080"
+            restart: on-failure
+            healthcheck:
+              test: ["CMD", "python", "/app/healthcheck.py"]
+              interval: 25s
+              timeout: 12s
+              retries: 5
+              start_period: 15s
+
+        networks:
+          app-net:
+            name: d10f-q3-test
+
+        Задание. Заполните таблицу: первый столбец уже заполнен, в двух других
+        столбцах запишите итоговое значение параметра после слияния файлов и
+        подстановки переменных и укажите, откуда взялось значение.
+
+        | № | Параметр конфигурации | Итоговое значение после слияния и подстановки | Откуда взято значение (файл или переменная) |
+        |---|----------------------|----------------------------------------|------------------------------------------|
+        | 1 | Образы сервисов wx-api и wx-web |   |   |
+        | 2 | Опубликованный порт сервиса wx-web (порт компьютера → порт контейнера) |   |   |
+        | 3 | Опубликованный порт сервиса wx-api |   |   |
+        | 4 | Параметры проверки работоспособности (health check) сервиса wx-api |   |   |
+        | 5 | Проверка работоспособности (health check) сервиса wx-web |   |   |
+        | 6 | Политика перезапуска (restart) сервиса wx-web |   |   |
+        | 7 | Имя сети (network), в которую подключаются оба сервиса |   |   |
+        | 8 | DNS-имя, по которому wx-web обращается к wx-api |   |   |
+
+        Баллы: 32 (8 строк × 4).
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Глава 10. Сценарии проверки.
+
+      Инструкция. В каждом вопросе дан фрагмент: файлы конфигурации Docker Compose
+      (ядро, override-файлы, .env, файлы конфигурации приложения) и, где это нужно,
+      последовательность команд; рядом дано описание исходного состояния — что уже
+      есть на машине (какие образы, контейнеры, сети, тома), какие файлы созданы,
+      какие порты свободны. Всё, что нужно для ответа, дано в условии: компьютер на
+      экзамене нет, решаем на бумаге.
+
+      Во всех вопросах приложение — небольшой HTTP-сервер на Python. При старте он
+      печатает в журнал строки вида:
+        port=8080                          — порт, который слушает приложение
+        db=<значение переменной провайдера БД>
+        log=<уровень журналирования>
+        dbhost=<адрес сервера БД>
+        secret=<путь файла конфигурации, который приложение нашло> или secret=not found
+      Эти строки журнала — наблюдаемый на бумаге признак того, какая конфигурация
+      доехала в контейнер.
+
+      Задание в каждом вопросе одно и то же: придумайте 4 сценария проверки
+      (тест-кейса) по данному фрагменту. Для каждого сценария укажите:
+        1) исходное условие или действие — какой файл изменён или удалён, какое
+           значение переменной окружения задано, в каком порядке перечислены файлы
+           после ключа -f, из какого каталога запускается команда, какое имя проекта
+           указано;
+        2) ожидаемый результат — что покажет Docker Compose или само приложение:
+           какие контейнеры (с какими именами и портами) появятся, какое значение
+           примет параметр конфигурации, что напечатает приложение в журнале, какого
+           рода ошибка возникнет (точную формулировку сообщения приводить не нужно —
+           достаточно указать род ошибки);
+        3) что проверяет сценарий — какое правило Docker Compose он подтверждает или
+           какую ошибку ловит.
+      Сценарии должны различаться исходным условием; сценарий, отличающийся только
+      формулировкой, засчитывается как повтор. Хотя бы один сценарий должен ловить
+      скрытую ошибку, названную в условии вопроса.
+
+      Формат ответа — таблица с тремя заполняемыми столбцами:
+
+      | № | Исходное условие или действие | Ожидаемый результат | Что проверяет сценарий |
+      |---|-------------------------------|---------------------|------------------------|
+    questions:
+    - id: D10-С-01
+      text: |
+        Фрагмент.
+        Приложение «заметки» — небольшой HTTP-сервер на Python (образы
+        d10/notes-api:1.0 и d10/notes-web:1.0). При старте веб-контейнер печатает в
+        журнал строки:
+          port=8080
+          db=<значение Notes__DbProvider>
+        Контейнер API отвечает по адресу http://notes-api:8080/notes (адрес передаётся
+        веб-приложению переменной Notes__ApiUrl).
+
+        Исходное состояние. Docker Engine работает; контейнеров и сетей с именами
+        notes-* на машине нет; образы d10/notes-api:1.0, d10/notes-web:1.0,
+        d10/notes-web:1.1 и d10/notes-web:1.2 собраны заранее и лежат локально.
+        Свободны порты 8471, 8472, 8473, 8474, 8475. Файлы лежат в каталоге
+        notes-app/ (см. список ниже).
+
+        Файл notes-app/docker-compose.yml (ядро):
+        services:
+          notes-api:
+            image: d10/notes-api:1.0
+            environment:
+              - Notes__DbProvider=Sqlite
+            networks:
+              - app-net
+
+          notes-web:
+            image: d10/notes-web:1.0
+            environment:
+              - Notes__ApiUrl=http://notes-api:8080/notes
+            ports:
+              - "8080"
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл notes-app/docker-compose-v2.yml (override, меняет только образ):
+        services:
+          notes-web:
+            image: d10/notes-web:1.1
+
+        Файл notes-app/docker-compose-dev.yml (override):
+        services:
+          notes-api:
+            ports:
+              - "8471:8080"
+            healthcheck:
+              disable: true
+
+          notes-web:
+            entrypoint:
+              - python
+              - app.py
+            ports:
+              - "8472:8080"
+
+        networks:
+          app-net:
+            name: notes-dev
+
+        Файл notes-app/docker-compose-test.yml (override):
+        services:
+          notes-api:
+            healthcheck:
+              interval: 20s
+              start_period: 15s
+              retries: 4
+
+          notes-web:
+            ports:
+              - "8473:8080"
+            restart: on-failure
+            healthcheck:
+              test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+              interval: 20s
+              timeout: 10s
+              retries: 4
+              start_period: 10s
+
+        networks:
+          app-net:
+            name: notes-test
+
+        Файл notes-app/docker-compose-uat.yml (override):
+        services:
+          notes-api:
+            healthcheck:
+              interval: 10s
+              retries: 2
+            restart: always
+            ports:
+              - "8474:8080"
+
+          notes-web:
+            image: d10/notes-web:1.2
+            restart: always
+            ports:
+              - "8475:8080"
+            healthcheck:
+              interval: 10s
+              retries: 2
+
+        networks:
+          app-net:
+            name: notes-uat
+
+        Команды, которые студент может использовать при проверке (Docker Compose v2,
+        каждая команда одной строкой):
+        # посмотреть результат слияния ядра и override-файла (ничего не разворачивается):
+        docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-v2.yml config
+
+        # развернуть окружение test:
+        docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-test.yml -p notes-test up -d
+
+        # развернуть окружение uat:
+        docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-uat.yml -p notes-uat up -d
+
+        # остановить и удалить окружение test:
+        docker compose -f ./notes-app/docker-compose.yml -f ./notes-app/docker-compose-test.yml -p notes-test down
+
+        Задание. Придумайте 4 сценария проверки для этого набора файлов. Для каждого
+        сценария укажите исходное условие (какой файл изменён, в каком порядке
+        перечислены файлы после ключа -f, какое имя проекта указано в команде),
+        ожидаемый результат (какие контейнеры, с какими именами и портами, появятся;
+        какие значения примут свойства; какого рода ошибка возникнет) и что проверяет
+        сценарий. Хотя бы один сценарий должен ловить скрытую ошибку: перепутанный
+        порядок файлов -f, забытое имя проекта -p в команде down либо override-файл,
+        в котором имя сервиса не совпадает с именем сервиса в ядре.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D10-С-02
+      text: |
+        Фрагмент.
+        Приложение «календарь» — небольшой HTTP-сервер на Python (образ
+        d10/calendar-web:1.0) и отдельный сервер базы данных (образ
+        postgres:16-alpine). При старте веб-приложение печатает в журнал строки:
+          port=8080
+          db=<значение Calendar__DbProvider>
+          log=<значение Calendar__LogLevel>
+          dbhost=<значение Calendar__DbHost>
+        Если подключиться к базе не удалось, вместо строки dbhost=... печатается
+        сообщение об ошибке подключения.
+
+        Исходное состояние. Docker Engine работает; контейнеров и сетей с именами
+        calendar-* на машине нет; образы d10/calendar-web:1.0 и postgres:16-alpine
+        собраны заранее и лежат локально. Свободен порт 8481 (web в dev-окружении)
+        и порт 8482 (web в test-окружении), а также порт 5433 для базы данных.
+        Каталог calendar/ содержит compose-файлы, подкаталог config/ — файл
+        logging.env, и файл .env (Compose читает файл с именем .env из текущего
+        рабочего каталога; другое имя файла задать нельзя).
+
+        Файл calendar/.env:
+        # container configuration - ports to publish:
+        CALENDAR_WEB_PORT=8482
+        CALENDAR_DB_PORT=5433
+        CALENDAR_DB_HOST=calendar-db
+
+        # compose configuration - files and project name:
+        COMPOSE_PATH_SEPARATOR=:
+        COMPOSE_FILE=docker-compose.yml:docker-compose-test.yml
+        COMPOSE_PROJECT_NAME=calendar-svc
+
+        Файл calendar/docker-compose.yml (ядро):
+        services:
+          calendar-web:
+            image: d10/calendar-web:1.0
+            environment:
+              - Calendar__DbProvider=Sqlite
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл calendar/docker-compose-dev.yml (override):
+        services:
+          calendar-web:
+            ports:
+              - "8481:8080"
+            environment:
+              - Calendar__LogLevel=Debug
+            env_file:
+              - ./config/logging.env
+
+        networks:
+          app-net:
+            name: calendar-dev
+
+        Файл calendar/docker-compose-test.yml (override):
+        services:
+          calendar-web:
+            ports:
+              - "${CALENDAR_WEB_PORT}:8080"
+            environment:
+              - Calendar__DbProvider=Postgres
+              - Calendar__DbHost=${CALENDAR_DB_HOST}
+            env_file:
+              - ./config/logging.env
+            networks:
+              - app-net
+
+          calendar-db:
+            image: postgres:16-alpine
+            environment:
+              - POSTGRES_DB=calendar
+              - POSTGRES_USER=calendar
+              - POSTGRES_PASSWORD=calendar
+            ports:
+              - "${CALENDAR_DB_PORT}:5432"
+            volumes:
+              - calendar-db-data:/var/lib/postgresql/data
+            networks:
+              - app-net
+
+        volumes:
+          calendar-db-data:
+
+        Файл calendar/config/logging.env:
+        Calendar__LogLevel=Information
+        Calendar__LogLevel__System=Warning
+
+        Команда запуска, как в инструкции к главе:
+        cd ./calendar
+        docker compose up -d
+
+        Задание. Придумайте 4 сценария проверки для этого набора файлов и файла .env.
+        Для каждого сценария укажите исходное условие (какая строка .env изменена или
+        удалена, из какого каталога запускается команда, какие файлы перечислены после
+        -f, какое окружение разворачивается), ожидаемый результат (какие контейнеры и
+        с какими портами появятся, какое значение примет подставляемая переменная, что
+        напечатает приложение в журнале, какого рода ошибка возникнет) и что проверяет
+        сценарий. Хотя бы один сценарий должен ловить скрытую ошибку: разделитель
+        COMPOSE_PATH_SEPARATOR со знаком ";" вместо ":", незаданная переменная ${...}
+        без значения по умолчанию (пустая строка и предупреждение) либо подмена
+        env_file разделом environment.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D10-С-03
+      text: |
+        Фрагмент.
+        Приложение «фотогалерея» — небольшой HTTP-сервер на Python (образ
+        d10/photo-web:1.0) и отдельный сервер базы данных (образ
+        postgres:16-alpine). Приложение при старте ищет файл конфигурации по пути
+        /app/config/secrets.json (путь зашит в образ) и печатает в журнал:
+          secret=/app/config/secrets.json      — файл найден и прочитан
+          secret=not found                     — файл по этому пути не найден
+        Если в файле нет строки подключения, приложение работает с локальным файлом
+        данных и сообщает об этом в журнале.
+
+        Исходное состояние. Docker Engine работает; контейнеров и сетей с именами
+        photo-* на машине нет; образы d10/photo-web:1.0 и postgres:16-alpine собраны
+        заранее и лежат локально. Свободны порты 8491 и 8492. Каталог gallery/
+        содержит compose-файлы и подкаталог config/ с файлами empty.json,
+        connection.json и logging.env.
+
+        Файл gallery/docker-compose.yml (ядро):
+        services:
+          photo-web:
+            image: d10/photo-web:1.0
+            secrets:
+              - source: photo-db-connection
+                target: /app/config/secrets.json
+            networks:
+              - app-net
+
+        networks:
+          app-net:
+
+        Файл gallery/docker-compose-dev.yml (override):
+        services:
+          photo-web:
+            ports:
+              - "8491:8080"
+            environment:
+              - Photo__DbProvider=Sqlite
+            env_file:
+              - ./config/logging.env
+
+        secrets:
+          photo-db-connection:
+            file: ./config/empty.json
+
+        Файл gallery/docker-compose-prod.yml (override с расширениями YAML):
+        x-logging: &logging
+          logging:
+            options:
+              max-size: '50m'
+              max-file: '5'
+
+        x-labels: &labels
+          app-name: photo-archive
+
+        services:
+          photo-web:
+            ports:
+              - "8492:8080"
+            <<: *logging
+            labels:
+              <<: *labels
+              public: web
+
+          photo-db:
+            image: postgres:16-alpine
+            environment:
+              - POSTGRES_DB=photos
+              - POSTGRES_USER=photos
+              - POSTGRES_PASSWORD=photos
+            volumes:
+              - photo-db-data:/var/lib/postgresql/data
+            networks:
+              - app-net
+            <<: *logging
+            labels:
+              <<: *labels
+
+        networks:
+          app-net:
+            name: photo-prod
+
+        volumes:
+          photo-db-data:
+
+        secrets:
+          photo-db-connection:
+            file: ./config/connection.json
+
+        Файл gallery/config/empty.json:
+        {}
+
+        Файл gallery/config/connection.json:
+        {
+          "ConnectionStrings": {
+            "PhotoDb": "Server=photo-db;Database=photos;User Id=photos;Password=photos;"
+          }
+        }
+
+        Файл gallery/config/logging.env:
+        Photo__LogLevel=Debug
+
+        Команды, которые студент может использовать при проверке:
+        # посмотреть результат слияния ядра и override-файла (ничего не разворачивается):
+        docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-prod.yml config
+
+        # развернуть prod-окружение:
+        docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-prod.yml -p photo-prod up -d
+
+        # развернуть dev-окружение:
+        docker compose -f ./gallery/docker-compose.yml -f ./gallery/docker-compose-dev.yml -p photo-dev up -d
+
+        Задание. Придумайте 4 сценария проверки для этого набора файлов. Для каждого
+        сценария укажите исходное условие (какой файл изменён, какой файл секрета
+        отсутствует, какой путь указан в target, в каком файле объявлено расширение,
+        какое имя сети задано), ожидаемый результат (запустится ли контейнер, какой
+        путь файла секрета увидит приложение, что напечатает приложение в журнале,
+        какого рода ошибка возникнет) и что проверяет сценарий. Хотя бы один сценарий
+        должен ловить скрытую ошибку: отсутствующий файл секрета, target, не
+        совпадающий с путём, который читает приложение, расширение, объявленное в ядре
+        и использованное в override-файле, либо одна и та же сеть в двух окружениях.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.

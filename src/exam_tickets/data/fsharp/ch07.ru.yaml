@@ -1,0 +1,367 @@
+subject: fsharp
+language: ru
+file_chapter: 7
+chapters:
+- 7
+chapter_titles:
+- Working with collections
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      В каждом задании дан фрагмент кода на F# и 5 утверждений о нём. Для каждого утверждения укажите, ВЕРНО оно или НЕВЕРНО, и объясните почему: назовите правило языка и покажите, как оно действует в этом коде. Компьютер не нужен: всё, что нужно для ответа, есть в условии.
+      Баллы: утверждения 1–4 — по 5 баллов (1 за «верно/неверно» + 4 за обоснование), утверждение 5 — 4 балла (1 + 3). Всего 24 балла.
+    questions:
+    - id: F07-К-01
+      text: |
+        Прочитайте код. Все строки выполняются по порядку сверху вниз.
+
+        type MatchResult =
+            { Host : string; HostGoals : int
+              Guest : string; GuestGoals : int }
+
+        let game host hg guest gg =
+            { Host = host; HostGoals = hg
+              Guest = guest; GuestGoals = gg }
+
+        // результаты сезона
+        let games = [
+            game "Kairat" 0 "Astana" 2
+            game "Ordabasy" 1 "Kairat" 1
+            game "Astana" 1 "Tobol" 2
+            game "Tobol" 0 "Astana" 3
+        ]
+
+        // императивная версия
+        type GuestRecord = { Team : string; mutable Wins : int }
+        let table = ResizeArray<GuestRecord>()
+
+        for g in games do
+            if g.GuestGoals > g.HostGoals then
+                let mutable found = false
+                for row in table do
+                    if row.Team = g.Guest then
+                        found <- true
+                        row.Wins <- row.Wins + 1
+                if not found then
+                    table.Add { Team = g.Guest; Wins = 1 }
+
+        // декларативная версия
+        let isGuestWin g = g.GuestGoals > g.HostGoals
+
+        let bestGuest =
+            games
+            |> List.filter isGuestWin
+            |> List.countBy (fun g -> g.Guest)
+            |> List.maxBy (fun (team, count) -> count)
+
+        1. Если после этого кода выполнить тот же цикл for g in games do ... ещё раз (без изменений), в table останутся те же записи с теми же значениями: Astana — 2 победы, Tobol — 1. (5 баллов)
+        2. После вычисления bestGuest список games содержит только 3 матча: List.filter удаляет из него матчи, в которых гости не победили. (5 баллов)
+        3. Значение bestGuest имеет тип string * int и равно ("Astana", 2): List.countBy возвращает список пар «команда, количество», а List.maxBy выбирает одну пару. (5 баллов)
+        4. Строка if not found then table.Add { Team = g.Guest; Wins = 1 } компилируется без ветки else, потому что ветка then имеет тип unit. (5 баллов)
+        5. Матч Ordabasy 1:1 Kairat не попадает в результат List.filter isGuestWin, потому что сравнение в isGuestWin строгое (>). (4 балла)
+    - id: F07-К-02
+      text: |
+        Прочитайте код. Все строки выполняются по порядку сверху вниз.
+
+        // номера аудиторий
+        let rooms = [ 101 .. 110 ]
+        let third = rooms[2]
+        let middle = rooms[3 .. 5]
+
+        // этажи
+        let floors = [| 1 .. 5 |]
+        floors[0] <- 10
+        let doubled = floors |> Array.map (fun f -> f * 2)
+
+        // страницы
+        let pages = seq { 1 .. 8 }
+        let fifth = pages |> Seq.item 4
+
+        1. Значение third равно 102: rooms[2] — это второй элемент списка. (5 баллов)
+        2. Значение middle равно [104; 105; 106]: срез (slice) rooms[3 .. 5] включает обе границы. (5 баллов)
+        3. Строка floors[0] <- 10 — ошибка компиляции: floors объявлен через let без mutable, а значит, его элементы изменить нельзя. (5 баллов)
+        4. Строку let fifth = pages |> Seq.item 4 можно заменить на let fifth = pages[4]: у последовательности (sequence) есть такой же индексатор, как у списка и массива. (5 баллов)
+        5. Значение fifth равно 5. (4 балла)
+    - id: F07-К-03
+      text: |
+        Прочитайте код. Все строки выполняются по порядку сверху вниз.
+
+        // язык программирования каждого студента
+        let langs = [ "Aigerim", "F#"; "Daniyar", "Python"; "Saule", "Java" ]
+        let byStudent = Map langs
+        let updated = byStudent.Add("Daniyar", "F#")
+        let extended = updated |> Map.add "Timur" "Go"
+
+        // кружки
+        let chess = Set [ "Aigerim"; "Daniyar"; "Aigerim" ]
+        let robots = Set [ "Daniyar"; "Saule" ]
+        let onlyChess = chess - robots
+        let everyone = chess + robots
+
+        1. После строки let updated = byStudent.Add("Daniyar", "F#") в карте byStudent у Daniyar тоже записан язык "F#". (5 баллов)
+        2. Карта updated содержит 4 пары: Add добавляет ещё одну пару с ключом "Daniyar", и в карте становится два ключа "Daniyar". (5 баллов)
+        3. Множество (set) chess содержит 2 элемента: повторное "Aigerim" хранится один раз. (5 баллов)
+        4. onlyChess = set ["Aigerim"] — это ученики шахматного кружка, которых нет в robots; everyone содержит 3 элемента. (5 баллов)
+        5. langs — список (list) из трёх кортежей (tuple) типа (string * string) list: запятая создаёт кортеж, а точка с запятой разделяет элементы списка. (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Проследите выполнение кода по шагам конвейера (pipeline) и заполните таблицу трассировки. Каждая строка таблицы — 4 балла (2 за столбец «Тип» + 2 за столбец «Значение после шага»), всего 8 строк × 4 = 32 балла.
+      - Шаги выполняются по порядку сверху вниз; первый столбец таблицы уже заполнен. Определения типов, данных и функций над таблицей уже выполнены. В первом столбце длинные лямбды (lambda) сокращены до «…» — полный код дан над таблицей.
+      - «Тип» — тип имени, которое связывает шаг, в нотации FSI: total: int; best: string * int; xs: int list; arr: int array; список списков — int list list.
+      - «Значение после шага» — значение этого имени: список [1; 2; 3], массив [|1; 2; 3|], кортеж ("a", 1), число 42. Записи (records) из списка матчей можно обозначать номерами матчей из комментариев в коде, например: [матч 2; матч 3].
+      - Если строка ничего не связывает, а изменяет значение (оператор <-), в столбце «Тип» напишите unit, а в столбце «Значение» — значение изменённой коллекции после строки.
+      - Если строка не компилируется, в столбце «Тип» напишите «ошибка компиляции», а в столбце «Значение» — причину. Такая строка считается удалённой и на следующие строки не влияет.
+    questions:
+    - id: F07-Ф-01
+      text: |
+        // турнир: конвейер (pipeline), выполненный по шагам
+        type MatchResult =
+            { Home: string; HomeGoals: int
+              Away: string; AwayGoals: int }
+
+        let create home hg away ag =
+            { Home = home; HomeGoals = hg; Away = away; AwayGoals = ag }
+
+        let games = [
+            create "Tobol" 1 "Kairat" 2     // матч 1
+            create "Astana" 0 "Tobol" 0     // матч 2
+            create "Kairat" 3 "Astana" 1    // матч 3
+            create "Astana" 1 "Tobol" 2     // матч 4
+            create "Tobol" 0 "Kairat" 1     // матч 5
+        ]
+
+        let isAwayWin game = game.AwayGoals > game.HomeGoals
+
+        let awayWins = games |> List.filter isAwayWin
+        let winsByTeam = awayWins |> List.countBy (fun game -> game.Away)
+        let best = winsByTeam |> List.maxBy (fun (team, wins) -> wins)
+        let tobolGames = games |> List.filter (fun game -> game.Home = "Tobol" || game.Away = "Tobol")
+        let totals = tobolGames |> List.map (fun game -> game.HomeGoals + game.AwayGoals)
+        let sorted = totals |> List.sort
+        let rest = sorted |> List.skip 1
+        let sum = rest |> List.fold (fun acc x -> acc + x) 0
+
+        Заполните столбцы «Тип» и «Значение после шага» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+        | № | Шаг конвейера (код)                                               | Тип                    | Значение после шага        |
+        |---|-------------------------------------------------------------------|------------------------|----------------------------|
+        | 1 | let awayWins = games |> List.filter isAwayWin                     |                        |                            |
+        | 2 | let winsByTeam = awayWins |> List.countBy (fun game -> game.Away) |                        |                            |
+        | 3 | let best = winsByTeam |> List.maxBy (fun (team, wins) -> wins)    |                        |                            |
+        | 4 | let tobolGames = games |> List.filter (fun game -> … || …)        |                        |                            |
+        | 5 | let totals = tobolGames |> List.map (fun game -> …)               |                        |                            |
+        | 6 | let sorted = totals |> List.sort                                  |                        |                            |
+        | 7 | let rest = sorted |> List.skip 1                                  |                        |                            |
+        | 8 | let sum = rest |> List.fold (fun acc x -> acc + x) 0              |                        |                            |
+    - id: F07-Ф-02
+      text: |
+        // голы команд: collect → groupBy → map → maxBy и дальше
+        type Game =
+            { Home: string; HomeGoals: int
+              Away: string; AwayGoals: int }
+
+        let games =
+            [ { Home = "Aktobe"; HomeGoals = 2; Away = "Ordabasy"; AwayGoals = 1 }
+              { Home = "Ordabasy"; HomeGoals = 4; Away = "Zhetysu"; AwayGoals = 0 }
+              { Home = "Zhetysu"; HomeGoals = 2; Away = "Aktobe"; AwayGoals = 2 } ]
+
+        let rows =
+            games
+            |> List.collect (fun g -> [ (g.Home, g.HomeGoals); (g.Away, g.AwayGoals) ])
+        let groups = rows |> List.groupBy (fun (team, _) -> team)
+        let goalsByTeam =
+            groups
+            |> List.map (fun (team, items) -> team, items |> List.sumBy (fun (_, n) -> n))
+        let top = goalsByTeam |> List.maxBy (fun (_, total) -> total)
+        let goalList = goalsByTeam |> List.map (fun (_, total) -> total)
+        let ordered = goalList |> List.sort
+        let pairs = ordered |> List.windowed 2
+        let diffs = pairs |> List.map (fun pair -> pair[1] - pair[0])
+
+        Заполните столбцы «Тип» и «Значение после шага» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+        | № | Шаг конвейера (код)                           | Тип                    | Значение после шага        |
+        |---|-----------------------------------------------|------------------------|----------------------------|
+        | 1 | let rows = games |> List.collect (…)          |                        |                            |
+        | 2 | let groups = rows |> List.groupBy (…)         |                        |                            |
+        | 3 | let goalsByTeam = groups |> List.map (…)      |                        |                            |
+        | 4 | let top = goalsByTeam |> List.maxBy (…)       |                        |                            |
+        | 5 | let goalList = goalsByTeam |> List.map (…)    |                        |                            |
+        | 6 | let ordered = goalList |> List.sort           |                        |                            |
+        | 7 | let pairs = ordered |> List.windowed 2        |                        |                            |
+        | 8 | let diffs = pairs |> List.map (fun pair -> …) |                        |                            |
+    - id: F07-Ф-03
+      text: |
+        // диапазоны (ranges), срезы (slices), списки и массивы
+        let nums = [ 2 .. 3 .. 14 ]
+        let middle = nums[1 .. 3]
+        let extended = 0 :: middle @ [ nums[0] ]
+        let arr = extended |> List.toArray
+        let doubled = arr |> Array.map (fun x -> x * 2)
+        doubled[0] <- doubled[4] + 1
+        extended[0] <- 7
+        let total = doubled[0 .. 2] |> Array.fold (fun acc x -> acc + x) 0
+
+        Заполните столбцы «Тип» и «Значение после шага» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+        | № | Шаг конвейера (код)                             | Тип                    | Значение после шага        |
+        |---|-------------------------------------------------|------------------------|----------------------------|
+        | 1 | let nums = [ 2 .. 3 .. 14 ]                     |                        |                            |
+        | 2 | let middle = nums[1 .. 3]                       |                        |                            |
+        | 3 | let extended = 0 :: middle @ [ nums[0] ]        |                        |                            |
+        | 4 | let arr = extended |> List.toArray              |                        |                            |
+        | 5 | let doubled = arr |> Array.map (fun x -> x * 2) |                        |                            |
+        | 6 | doubled[0] <- doubled[4] + 1                    |                        |                            |
+        | 7 | extended[0] <- 7                                |                        |                            |
+        | 8 | let total = doubled[0 .. 2] |> Array.fold (…) 0 |                        |                            |
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Дан фрагмент кода с функцией и требование (requirement) к ней. Придумайте 4 ТЕСТА (test cases). Для каждого теста запишите:
+      1. входные данные — с какими аргументами вызывается функция;
+      2. ожидаемый результат (expected result) — что функция должна вернуть ПО ТРЕБОВАНИЮ;
+      3. что проверяет тест — какой путь выполнения (path), ветку (branch) или границу (boundary).
+
+      Тесты должны проверять разные случаи. Если вы нашли тест, на котором функция не выполняет требование, укажите это и объясните почему.
+
+      Баллы: 4 теста по 8 баллов (входные данные — 2, ожидаемый результат — 3, что проверяет — 3) = 32 балла; защита (ответы на вопросы экзаменатора) — 12 баллов. Итого 44 балла.
+    questions:
+    - id: F07-С-01
+      text: |
+        // Проверка инструктажа по технике безопасности
+        let briefingReport team briefed =
+            let missing = team - briefed
+            let missingCount = Set.count missing
+            if Set.isEmpty team then "Команда пуста"
+            elif team |> Set.isSubset briefed then "Все прошли инструктаж"
+            else $"Не прошли: {missingCount}"
+
+        Справка:
+        - Set.isSubset a b возвращает true, если каждый элемент множества a есть во множестве b (a — подмножество (subset) b). Например, Set.isSubset (Set [ 1 ]) (Set [ 1; 2 ]) = true.
+        - a - b — разность множеств (Set.difference): элементы a, которых нет в b.
+        - Set [ ... ] создаёт множество (set); повторы удаляются.
+
+        Требование (requirement): функция briefingReport получает два множества имён: team — сотрудники команды, briefed — все, кто прошёл инструктаж в этот день (там могут быть и сотрудники других команд). Функция возвращает строку:
+        - команда пустая — "Команда пуста";
+        - каждый сотрудник команды есть в briefed — "Все прошли инструктаж";
+        - иначе — "Не прошли: N", где N — число сотрудников команды, которых нет в briefed.
+
+        Входные данные теста — два множества, например briefingReport (Set [ "Aru"; "Dana" ]) (Set [ "Aru" ]).
+
+        Тест 1
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 2
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 3
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 4
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+    - id: F07-С-02
+      text: |
+        // Обрабатывает команды платёжного терминала до команды выхода
+        let runCommands commands =
+            commands
+            |> Seq.takeWhile (fun cmd -> cmd <> 'q')
+            |> Seq.map (fun cmd ->
+                if cmd = 'p' then "Оплата"
+                elif cmd = 'r' then "Возврат"
+                else $"Неизвестная команда {cmd}")
+            |> Seq.toList
+
+        Справка: Seq.takeWhile условие — берёт элементы с начала последовательности, пока условие истинно, и останавливается на первом элементе, для которого оно ложно (этот элемент и все следующие отбрасываются). Список (list) можно передать туда, где ожидается последовательность (seq).
+
+        Требование (requirement): функция runCommands получает символы, введённые кассиром на терминале, и возвращает список сообщений (string list) — по одному на каждую обработанную команду, в порядке ввода:
+        - 'p' — "Оплата";
+        - 'r' — "Возврат";
+        - любой другой символ — "Неизвестная команда X", где X — этот символ.
+        Команда выхода — 'q'. На экране терминала написано «Q — выход», поэтому выходом считаются и 'q', и 'Q'. Команда выхода и всё, что введено после неё, не обрабатываются. Если команд нет — пустой список [].
+        Регистр важен только для выхода: 'P' и 'R' — неизвестные команды.
+
+        Входные данные теста — список символов, например runCommands [ 'p'; 'r'; 'q' ].
+
+        Тест 1
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 2
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 3
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 4
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+    - id: F07-С-03
+      text: |
+        type Order = { Courier : string; Minutes : int }
+
+        type CourierStat = { Name : string; mutable OnTime : int }
+        let stats = ResizeArray<CourierStat>()
+
+        // Находит курьера, который чаще всех доставлял вовремя (не дольше 30 минут)
+        let bestCourier (orders : Order list) =
+            for order in orders do
+                if order.Minutes <= 30 then
+                    let mutable found = false
+                    for entry in stats do
+                        if entry.Name = order.Courier then
+                            found <- true
+                            entry.OnTime <- entry.OnTime + 1
+                    if not found then
+                        stats.Add { Name = order.Courier; OnTime = 1 }
+            let mutable best = stats[0]
+            for row in stats do
+                if row.OnTime > best.OnTime then best <- row
+            best.Name, best.OnTime
+
+        Справка: обращение по индексу к несуществующему элементу ResizeArray (например, stats[0], когда в stats нет ни одного элемента) вызывает исключение (exception) во время выполнения.
+
+        Требование (requirement): функцию bestCourier вызывают в конце каждого дня со списком заказов ЭТОГО дня. Каждый вызов должен считать только переданные ему заказы, независимо от предыдущих вызовов. Функция возвращает кортеж (tuple) (имя курьера, число заказов, доставленных вовремя):
+        - заказ доставлен вовремя, если Minutes не больше 30 (30 минут — ещё вовремя);
+        - побеждает курьер с наибольшим числом заказов, доставленных вовремя; при равенстве — тот, кто раньше встречается в списке среди заказов, доставленных вовремя;
+        - если вовремя не доставлено ни одного заказа (в том числе если список пуст) — ("нет", 0).
+
+        Входные данные теста — один или несколько вызовов подряд. Считайте, что перед КАЖДЫМ тестом код загружен заново (новая сессия FSI). Для краткости заказ можно записывать как (Aru, 20) вместо { Courier = "Aru"; Minutes = 20 }. Пример: bestCourier [ (Aru, 20); (Bek, 35) ].
+
+        Тест 1
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 2
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 3
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 4
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________

@@ -1,0 +1,437 @@
+subject: java
+language: kk
+file_chapter: 11
+chapters:
+- 11
+chapter_titles:
+- Data Structures
+levels:
+  cognitive:
+    heading: КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+    points: 24
+    instructions: |
+      Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+    questions:
+    - id: J11-К-01
+      text: |
+        Бағдарламаны оқыңыз.
+
+        import java.util.*;
+
+        class Kitap implements Comparable<Kitap> {
+          private String atau;
+          private String avtor;
+
+          Kitap(String atau, String avtor) {
+            this.atau = atau;
+            this.avtor = avtor;
+          }
+
+          public String getAtau() {
+            return atau;
+          }
+
+          public String getAvtor() {
+            return avtor;
+          }
+
+          public int compareTo(Kitap k) {
+            return atau.compareTo(k.getAtau());
+          }
+
+          public String toString() {
+            return atau;
+          }
+        }
+
+        class AvtorCompare implements Comparator<Kitap> {
+          public int compare(Kitap bir, Kitap eki) {
+            return bir.getAvtor().compareTo(eki.getAvtor());
+          }
+        }
+
+        public class Kitaphana {
+          public static void main(String[] args) {
+            List<Kitap> tizim = new ArrayList<>();
+            tizim.add(new Kitap("Ulpan", "Musrepov"));
+            tizim.add(new Kitap("Kochpendiler", "Esenberlin"));
+            tizim.add(new Kitap("Qan men ter", "Nurpeiisov"));
+            tizim.add(new Kitap("Abai joly", "Auezov"));
+
+            Collections.sort(tizim);                       // 1-жол
+            System.out.println(tizim);
+
+            AvtorCompare ac = new AvtorCompare();
+            tizim.sort(ac);                                // 2-жол
+            System.out.println(tizim);
+          }
+        }
+
+        Әр тұжырымды басқаларынан бөлек қарастырыңыз: тұжырымда айтылған өзгерісті бастапқы кодқа жеке енгізіңіз.
+
+        1. Kitap класының жариялауынан «implements Comparable<Kitap>» бөлігін өшірсек (compareTo() әдісі класта қалады), 1-жол компиляцияланбайды, себебі Collections.sort(tizim) тек Comparable интерфейсін іске асыратын (implements) элементтердің тізімін қабылдайды. (5 ұпай)
+        2. 2-жол орындалғанда кітаптарды салыстыру үшін Kitap класының compareTo() әдісі шақырылады, себебі Kitap Comparable интерфейсін іске асырады. (5 ұпай)
+        3. Kitap класынан «implements Comparable<Kitap>» бөлігін де, compareTo() әдісін де өшіріп, 1-жолды алып тастасақ, 2-жол компиляцияланбайды, себебі тізімді сұрыптау үшін оның элементтері Comparable болуы керек. (5 ұпай)
+        4. AvtorCompare жариялауындағы Comparator<Kitap> жазуын Comparator<String> деп өзгертсек (compare(Kitap bir, Kitap eki) әдісі өзгеріссіз қалады), код компиляцияланбайды, себебі салыстырғыштың (Comparator) compare() әдісі Comparator<T> жазуындағы T типті екі параметр қабылдауы керек. (5 ұпай)
+        5. 1-жолдың алдына tizim.add("Ulpan"); жолын қоссақ, код компиляцияланбайды, себебі tizim — List<Kitap>, ал генериктер (generics) оған тек Kitap объектілерін салуға рұқсат береді. (4 ұпай)
+    - id: J11-К-02
+      text: |
+        Бағдарламаны оқыңыз.
+
+        import java.util.*;
+
+        class Oqushy {
+          private int id;
+          private String aty;
+
+          Oqushy(int id, String aty) {
+            this.id = id;
+            this.aty = aty;
+          }
+
+          public int getId() {
+            return id;
+          }
+
+          public boolean equals(Object o) {
+            Oqushy basqa = (Oqushy) o;
+            return id == basqa.getId();
+          }
+
+          public int hashCode() {
+            return id % 10;
+          }
+
+          public String toString() {
+            return aty;
+          }
+        }
+
+        public class Synyp {
+          public static void main(String[] args) {
+            List<Oqushy> tizim = new ArrayList<>();
+            tizim.add(new Oqushy(12, "Asel"));
+            tizim.add(new Oqushy(25, "Bolat"));
+            tizim.add(new Oqushy(12, "Aset"));
+            tizim.add(new Oqushy(22, "Dana"));
+            tizim.add(new Oqushy(25, "Bolat"));
+
+            Set<Oqushy> jiyn = new HashSet<>(tizim);
+            System.out.println(tizim.size() + " " + jiyn.size());   // 1-жол
+
+            Oqushy a = tizim.get(0);
+            Oqushy b = tizim.get(2);
+            Oqushy c = tizim.get(3);
+            System.out.println(a == b);                              // 2-жол
+            System.out.println(a.equals(b));                         // 3-жол
+            System.out.println(a.hashCode() == c.hashCode());        // 4-жол
+            System.out.println(jiyn.add(new Oqushy(22, "Erlan")));   // 5-жол
+          }
+        }
+
+        Әр тұжырымды басқаларынан бөлек қарастырыңыз: тұжырымда айтылған өзгерісті бастапқы кодқа жеке енгізіңіз.
+
+        1. 1-жол «5 3» шығарады, себебі HashSet жиыны (Set) қайталанатын (duplicate) объектіні — hashCode() мәні бірдей және equals() true қайтаратын объектіні — қайта қоспайды. (5 ұпай)
+        2. Oqushy класынан hashCode() әдісін өшірсек (equals() қалады), 1-жол бәрібір «5 3» шығарады, себебі HashSet қайталануды тек equals() арқылы тексереді. (5 ұпай)
+        3. 2-жол true шығарады, себебі a мен b-ның id мәндері бірдей (12), ал Oqushy класында equals() әдісі id бойынша қайта анықталған (overriding). (5 ұпай)
+        4. 4-жол true шығарады, бірақ бұдан a мен c тең деген қорытынды шықпайды: a.equals(c) false қайтарады, сондықтан jiyn жиынында олар екі бөлек элемент. (5 ұпай)
+        5. 5-жол true шығарады, себебі «Erlan» есімді оқушы jiyn жиынында жоқ. (4 ұпай)
+    - id: J11-К-03
+      text: |
+        Бағдарламаны оқыңыз.
+
+        import java.util.*;
+
+        interface Kolik {
+          void jur();
+        }
+
+        class Avtobus implements Kolik {
+          public void jur() {
+            System.out.println("avtobus jurdi");
+          }
+        }
+
+        class Poiyz implements Kolik {
+          public void jur() {
+            System.out.println("poiyz jurdi");
+          }
+        }
+
+        public class Parking {
+          public static void main(String[] args) {
+            new Parking().go();
+          }
+
+          public void go() {
+            List<Avtobus> avtobustar = new ArrayList<>();
+            avtobustar.add(new Avtobus());
+            avtobustar.add(new Avtobus());
+            tekser(avtobustar);                                    // 1-жол
+            List<Avtobus> dayar = tazala(avtobustar);              // 2-жол
+            System.out.println(dayar.size());
+          }
+
+          public void tekser(List<? extends Kolik> kolikter) {     // 3-жол
+            for (Kolik k : kolikter) {
+              k.jur();                                             // 4-жол
+            }
+          }
+
+          public <T extends Kolik> List<T> tazala(List<T> tizim) { // 5-жол
+            List<T> natije = new ArrayList<>();
+            for (T k : tizim) {
+              natije.add(k);
+            }
+            return natije;
+          }
+        }
+
+        Әр тұжырымды басқаларынан бөлек қарастырыңыз: тұжырымда айтылған өзгерісті бастапқы кодқа жеке енгізіңіз.
+
+        1. 3-жолдағы параметрді List<Kolik> kolikter деп өзгертсек, 1-жол компиляцияланады, себебі Avtobus Kolik интерфейсін іске асырады (implements), яғни Avtobus IS-A Kolik. (5 ұпай)
+        2. tekser() әдісінің соңына kolikter.add(new Avtobus()); жолын қоссақ, код компиляцияланады, себебі 1-жолда tekser()-ге шынымен Avtobus тізімі беріледі. (5 ұпай)
+        3. 2-жол компиляцияланады, себебі tazala(avtobustar) шақыруында T = Avtobus болады, сондықтан әдіс List<Avtobus> қайтарады. (5 ұпай)
+        4. Kolik — класс емес, интерфейс, сондықтан 5-жолда <T extends Kolik> орнына <T implements Kolik> деп жазу керек; қазіргі түрінде 5-жол компиляцияланбайды. (5 ұпай)
+        5. 4-жол компиляцияланады, себебі қойылмалы таңбасы (wildcard) бар тізімнің элементтерін Kolik ретінде оқып, олардың әдістерін шақыруға болады; бағдарлама «avtobus jurdi» жолын екі рет, содан кейін 2 шығарады. (4 ұпай)
+  functional:
+    heading: ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+    points: 32
+    instructions: |
+      Бағдарламаның орындалуын қадамдап бақылаңыз (trace). Кестенің әр жолы — main әдісінің бір операторы (statement); main осы 8 жолдан тұрады. Әр жол орындалғаннан КЕЙІНГІ жағдайды жазыңыз: «Коллекция мазмұны» бағанына — коллекциялардың мазмұнын, «Шығыс немесе нәтиже» бағанына — экранға шыққан мәтінді немесе әдістің қайтарған мәнін. Әр жол — 4 ұпай (2 + 2).
+      Белгілеулер: «Коллекция мазмұны» бағанына жол орындалғаннан кейінгі әр коллекцияның толық мазмұнын жазыңыз: tizim: [Asel, Bolat]. List (тізім) пен TreeSet үшін рет маңызды — элементтерді println шығаратын ретпен жазыңыз; сөздік (Map): {Asel=5, Bolat=3}. HashSet пен HashMap үшін рет кепілдендірілмейді — элементтерді кез келген ретпен жазып, «(ретсіз)» деп белгілеңіз. Бос коллекция — «бос», өзгермесе — «өзгеріссіз». compareTo()/compare() нәтижесі үшін тек таңбасын жазыңыз: «< 0», «0», «> 0». Әдіс мән қайтарса (add, put, get, size), «Шығыс немесе нәтиже» бағанына сол мәнді, println болса — шыққан мәтінді жазыңыз.
+      Қосымша: бірнеше коллекция болса, оларды «; » арқылы жазыңыз: tizim: [Asel]; sozdik: {Asel=5}; бір коллекция өзгерсе, ұяшықты толық (барлық коллекциямен) қайта жазыңыз. Объектілер toString() әдісі қайтаратын түрде жазылады. Жол ештеңе шығармаса және мән қайтармаса (жариялау, sort) — «—». Жолда бағдарлама ерекше жағдаймен (exception) тоқтаса — «бағдарлама тоқтайды: ЕрекшеЖағдайдыңАты».
+    questions:
+    - id: J11-Ф-01
+      text: |
+        import java.util.*;
+
+        class Ozen {
+          String aty;
+          int uzyndyq;
+
+          Ozen(String aty, int uzyndyq) {
+            this.aty = aty;
+            this.uzyndyq = uzyndyq;
+          }
+
+          public String toString() {
+            return aty + " " + uzyndyq;
+          }
+        }
+
+        public class Ozender {
+          public static void main(String[] args) {
+            List<Ozen> ozender = new ArrayList<>();
+            ozender.add(new Ozen("Oral", 2428));
+            ozender.add(new Ozen("Esil", 2450));
+            ozender.add(new Ozen("Ile", 1439));
+            ozender.sort((o1, o2) -> o1.aty.compareTo(o2.aty));
+            ozender.sort((o1, o2) -> o1.uzyndyq - o2.uzyndyq);
+            ozender.sort((o1, o2) -> o2.aty.compareTo(o1.aty));
+            System.out.println(ozender);
+          }
+        }
+
+        | № | Код                                                   | Коллекция мазмұны | Шығыс немесе нәтиже |
+        |---|-------------------------------------------------------|-------------------|---------------------|
+        | 1 | List<Ozen> ozender = new ArrayList<>();               |                   |                     |
+        | 2 | ozender.add(new Ozen("Oral", 2428));                  |                   |                     |
+        | 3 | ozender.add(new Ozen("Esil", 2450));                  |                   |                     |
+        | 4 | ozender.add(new Ozen("Ile", 1439));                   |                   |                     |
+        | 5 | ozender.sort((o1, o2) -> o1.aty.compareTo(o2.aty));   |                   |                     |
+        | 6 | ozender.sort((o1, o2) -> o1.uzyndyq - o2.uzyndyq);    |                   |                     |
+        | 7 | ozender.sort((o1, o2) -> o2.aty.compareTo(o1.aty));   |                   |                     |
+        | 8 | System.out.println(ozender);                          |                   |                     |
+    - id: J11-Ф-02
+      text: |
+        import java.util.*;
+
+        class Kitap {
+          String ataua;
+          int bet;
+
+          Kitap(String ataua, int bet) {
+            this.ataua = ataua;
+            this.bet = bet;
+          }
+
+          public String toString() {
+            return ataua + " (" + bet + ")";
+          }
+        }
+
+        public class Soreler {
+          public static void main(String[] args) {
+            Set<Kitap> sore = new TreeSet<>((k1, k2) -> k1.bet - k2.bet);
+            sore.add(new Kitap("Abai joly", 320));
+            sore.add(new Kitap("Kokserek", 96));
+            sore.add(new Kitap("Qan men ter", 320));
+            sore.add(new Kitap("Kokserek", 150));
+            sore.add(new Kitap("Abai", 100));
+            System.out.println(sore.size());
+            Set<String> ataular = new TreeSet<>(List.of("Kokserek", "Abai joly", "Abai", "Kokserek"));
+          }
+        }
+
+        | № | Код                                                                  | Коллекция мазмұны | Шығыс немесе нәтиже |
+        |---|----------------------------------------------------------------------|-------------------|---------------------|
+        | 1 | Set<Kitap> sore = new TreeSet<>((k1, k2) -> k1.bet - k2.bet);        |                   |                     |
+        | 2 | sore.add(new Kitap("Abai joly", 320));                               |                   |                     |
+        | 3 | sore.add(new Kitap("Kokserek", 96));                                 |                   |                     |
+        | 4 | sore.add(new Kitap("Qan men ter", 320));                             |                   |                     |
+        | 5 | sore.add(new Kitap("Kokserek", 150));                                |                   |                     |
+        | 6 | sore.add(new Kitap("Abai", 100));                                    |                   |                     |
+        | 7 | System.out.println(sore.size());                                     |                   |                     |
+        | 8 | Set<String> ataular = new TreeSet<>(List.of("Kokserek", "Abai joly", "Abai", "Kokserek")); |   |                     |
+    - id: J11-Ф-03
+      text: |
+        import java.util.*;
+
+        public class Upailar {
+          public static void main(String[] args) {
+            Map<String, Integer> upailar = new HashMap<>();
+            upailar.put("Aruzhan", 42);
+            upailar.put("Bolat", 35);
+            upailar.put("Aruzhan", 50);
+            System.out.println(upailar.get("Dana"));
+            System.out.println(upailar.size());
+            Map<String, Integer> turaqty = Map.of("Erlan", 10, "Gulnar", 20);
+            turaqty.put("Erlan", 15);
+          }
+        }
+
+        | № | Код                                                          | Коллекция мазмұны | Шығыс немесе нәтиже |
+        |---|--------------------------------------------------------------|-------------------|---------------------|
+        | 1 | Map<String, Integer> upailar = new HashMap<>();              |                   |                     |
+        | 2 | upailar.put("Aruzhan", 42);                                  |                   |                     |
+        | 3 | upailar.put("Bolat", 35);                                    |                   |                     |
+        | 4 | upailar.put("Aruzhan", 50);                                  |                   |                     |
+        | 5 | System.out.println(upailar.get("Dana"));                     |                   |                     |
+        | 6 | System.out.println(upailar.size());                          |                   |                     |
+        | 7 | Map<String, Integer> turaqty = Map.of("Erlan", 10, "Gulnar", 20); |              |                     |
+        | 8 | turaqty.put("Erlan", 15);                                    |                   |                     |
+  systemic:
+    heading: ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+    points: 44
+    instructions: |
+      Кодтағы ? белгісінің орнына main ішінде тізімге (List) элементтер қосатын add жолдары жазылады — бұл тесттің кірісі (input). Кірісті add жолдарымен немесе тізім мазмұнымен жазуға болады, мысалы: tizim: [7 Asel, 2 Bolat] (элементтер toString() шығаратын түрде; бос тізім — «бос»). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+      1. кіріс — тізімге қандай элементтер қандай ретпен қосылады;
+      2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек немесе қандай ерекше жағдаймен (exception) құлауы керек;
+      3. тест нені тексереді — қандай жағдай немесе шекара (boundary) тексеріледі (бос тізім, бір элемент, қайталанатын элементтер, тең мәндер), жиын (Set) элементтерді қалай салыстырады (equals() және hashCode() немесе салыстырғыш (Comparator)), лямбда (lambda) тізімді қалай сұрыптайды.
+
+      Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+    questions:
+    - id: J11-С-01
+      text: |
+        import java.util.*;
+
+        class Oqushy {                     // оқушы (student)
+          int id;
+          String aty;
+
+          Oqushy(int id, String aty) {
+            this.id = id;
+            this.aty = aty;
+          }
+
+          public boolean equals(Object o) {
+            Oqushy basqa = (Oqushy) o;
+            return id == basqa.id;         // бірдей оқушы = бірдей id
+          }
+
+          public int hashCode() {
+            return aty.hashCode();
+          }
+
+          public String toString() {
+            return id + " " + aty;
+          }
+        }
+
+        class Synyp {                      // сынып (class, group)
+          static int unikal(List<Oqushy> tizim) {
+            Set<Oqushy> jiyn = new HashSet<>(tizim);   // жиын (Set): қайталанатындар алынады
+            return jiyn.size();
+          }
+        }
+
+        public class SynypTest {
+          public static void main(String[] args) {
+            List<Oqushy> tizim = new ArrayList<>();
+            ?                              // тест кірісі: tizim.add(new Oqushy(id, "aty")); жолдары
+            System.out.println("unikal: " + Synyp.unikal(tizim));
+          }
+        }
+
+        Талап: ? орнына tizim тізіміне оқушыларды қосатын tizim.add(new Oqushy(id, "aty")); жолдары жазылады (0-ден 5-ке дейін жол). id — оң бүтін сан, aty — латын әріптерімен жазылған есім (null емес). Оқушы id бойынша анықталады: id-і бірдей екі жазба — бір оқушы, тіпті есімі әртүрлі жазылса да (мысалы, қате жазылған: Asel / Assel); id-і әртүрлі болса — есімдері бірдей болса да, бұлар әртүрлі оқушылар. unikal әдісі тізімдегі әртүрлі оқушылар санын қайтарады. Бағдарлама «unikal: N» жолын шығарады (N — сол сан); бос тізім үшін N = 0.
+    - id: J11-С-02
+      text: |
+        import java.util.*;
+
+        class Kui {                        // күй (song)
+          String aty;
+          int bpm;
+
+          Kui(String aty, int bpm) {
+            this.aty = aty;
+            this.bpm = bpm;
+          }
+
+          public String toString() {
+            return aty + " " + bpm;
+          }
+        }
+
+        class Oinatqysh {                  // ойнатқыш (player)
+          static TreeSet<Kui> rette(List<Kui> tizim) {
+            TreeSet<Kui> jiyn = new TreeSet<>((a, b) -> a.bpm - b.bpm);   // салыстырғыш (Comparator): bpm бойынша
+            jiyn.addAll(tizim);
+            return jiyn;
+          }
+        }
+
+        public class OinatqyshTest {
+          public static void main(String[] args) {
+            List<Kui> tizim = new ArrayList<>();
+            ?                              // тест кірісі: tizim.add(new Kui("aty", bpm)); жолдары
+            TreeSet<Kui> jiyn = Oinatqysh.rette(tizim);
+            System.out.println(jiyn.size() + " " + jiyn);
+          }
+        }
+
+        Талап: ? орнына tizim тізіміне күйлерді қосатын tizim.add(new Kui("aty", bpm)); жолдары жазылады (0-ден 5-ке дейін жол). aty — бас әріптен басталатын, латын әріптерімен жазылған атау (null емес), bpm — 40-тан 250-ге дейінгі бүтін сан (қарқын, минуттағы соққы саны). rette әдісі тізімдегі барлық әртүрлі күйлерді bpm өсу ретімен сұрыпталған жиынға (TreeSet) жинауы керек. Аты да, bpm-і де бірдей жазбалар — бір күй, ол жиында бір рет қана болады. Аттары әртүрлі күйлер bpm-дері бірдей болса да жоғалмауы керек; bpm бірдей болса, олар аты бойынша әліпби ретімен (compareTo) тұрады. Бағдарлама бір жол шығарады: жиындағы күйлер саны, бос орын, содан кейін жиынның өзі println шығаратын түрде, мысалы «2 [Aqqu 72, Adai 144]»; бос тізім үшін — «0 []».
+    - id: J11-С-03
+      text: |
+        import java.util.*;
+
+        class Tau {                        // тау (mountain)
+          String aty;
+          int biiktik;                     // биіктік (height), метр
+
+          Tau(String aty, int biiktik) {
+            this.aty = aty;
+            this.biiktik = biiktik;
+          }
+
+          public String toString() {
+            return aty + " " + biiktik;
+          }
+        }
+
+        class Karta {                      // карта (map)
+          static String engBiik(List<Tau> taular) {
+            taular.sort((a, b) -> a.biiktik - b.biiktik);   // лямбда (lambda): биіктік бойынша сұрыптау
+            return taular.get(0).aty;
+          }
+        }
+
+        public class KartaTest {
+          public static void main(String[] args) {
+            List<Tau> taular = new ArrayList<>();
+            ?                              // тест кірісі: taular.add(new Tau("aty", biiktik)); жолдары
+            System.out.println("eng biik: " + Karta.engBiik(taular));
+          }
+        }
+
+        Талап: ? орнына taular тізіміне тауларды қосатын taular.add(new Tau("aty", biiktik)); жолдары жазылады (0-ден 5-ке дейін жол). aty — латын әріптерімен жазылған атау (null емес), biiktik — оң бүтін сан (метр). engBiik әдісі тізімдегі ең биік таудың атын қайтарады; ең үлкен биіктік бірнеше тауда болса — олардың ішінен тізімде бірінші тұрғанының атын. Бағдарлама «eng biik: АТЫ» жолын шығарады. Тізім бос болса, ең биік тау жоқ: бағдарлама IndexOutOfBoundsException ерекше жағдайымен (exception) құлайды — бұл талапқа сай.

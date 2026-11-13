@@ -1,0 +1,507 @@
+subject: java
+language: kk
+file_chapter: 9
+chapters:
+- 9
+chapter_titles:
+- Life and Death of an Object
+levels:
+  cognitive:
+    heading: КОГНИТИВТІК ДЕҢГЕЙ (24 ұпай)
+    points: 24
+    instructions: |
+      Әр тапсырмада 5 тұжырым бар. Әр тұжырым үшін оның ДҰРЫС немесе ДҰРЫС ЕМЕС екенін көрсетіп, себебін түсіндіріңіз. 1–4 тұжырымдар — 5 ұпайдан, 5-тұжырым — 4 ұпай.
+    questions:
+    - id: J09-К-01
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Balyq {
+          private int salmaq = 3;
+          private float uzyndyq = 1.5F;
+          private String aty = "Belgisiz";
+          private int[] qabyrshaq = {1, 2, 3};
+          private boolean juzedi = true;
+          private int terendik = 10;
+
+          public Balyq(boolean j) {                  // K1
+            juzedi = j;
+            System.out.println("K1");
+          }
+
+          public Balyq(String a, int[] q) {          // K2
+            aty = a;
+            qabyrshaq = q;
+            System.out.println("K2");
+          }
+
+          public Balyq(int s, float u) {             // K3
+            salmaq = s;
+            uzyndyq = u;
+            System.out.println("K3");
+          }
+
+          public Balyq(float u, int t) {             // K4
+            uzyndyq = u;
+            terendik = t;
+            System.out.println("K4");
+          }
+
+          public Balyq(String a, float u) {          // K5
+            aty = a;
+            uzyndyq = u;
+            System.out.println("K5");
+          }
+
+          public void korset() {
+            System.out.println(aty + " " + salmaq + " " + uzyndyq + " " + terendik);
+          }
+        }
+
+        public class BalyqTest {
+          public static void main(String[] args) {
+            int s = 5;
+            float u = 2.5F;
+            String at = "Sazan";
+            int[] q = {4, 5};
+            boolean j = false;
+            int t = 40;
+
+            Balyq[] b = new Balyq[7];
+            b[0] = new Balyq(j);
+            b[1] = new Balyq(s, u);
+            b[2] = new Balyq(u, t);                  // 1-жол
+            b[3] = new Balyq(at, q);
+            b[4] = new Balyq(at, 7);                 // 2-жол
+            b[5] = new Balyq(true);
+            b[6] = new Balyq(t, 0.5F);               // 3-жол
+            b[2].korset();                           // 4-жол
+          }
+        }
+
+        1. 1-жолда K4 конструкторы (constructor), ал 3-жолда K3 конструкторы орындалады, себебі қайта жүктелген (overloaded) конструкторлардың қайсысы шақырылатынын аргументтердің типтері мен реті анықтайды. (5 ұпай)
+        2. 2-жол компиляцияланбайды, себебі 7 — int типті мән, ал K5 конструкторының екінші параметрі float, және Balyq класында (String, int) параметрлері бар конструктор жоқ. (5 ұпай)
+        3. 4-жол «Belgisiz 0 2.5 40» шығарады, себебі K4 конструкторы salmaq дана айнымалысына (instance variable) мән бермейді, ал int типінің әдепкі мәні — 0. (5 ұпай)
+        4. 4-жолдан кейін new Balyq(s, t); жолын қоссақ, код компиляцияланбайды, себебі екі int аргументі K3-ке (int, float) де, K4-ке (float, int) де сәйкес келеді және компилятор біреуін таңдай алмайды. (5 ұпай)
+        5. 4-жолдан кейін Balyq b7 = new Balyq(); жолын қоссақ, код компиляцияланбайды, себебі класта конструктор жазылғандықтан, компилятор аргументсіз әдепкі конструкторды (default constructor) қоспайды. (4 ұпай)
+    - id: J09-К-02
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Ata {
+          private String esim = "Ata";
+          private int jas;
+
+          public Ata(String e) {
+            esim = e;
+          }
+
+          public Ata(int j, String e) {
+            jas = j;
+            esim = e;
+          }
+
+          public String getEsim() {
+            return esim;
+          }
+        }
+
+        class Bala extends Ata {
+          private int synyp;
+
+          public Bala() {                            // A
+            this(1);
+          }
+
+          public Bala(int s) {                       // B
+            super(s + 6, "Aidar");
+            synyp = s;
+          }
+
+          public Bala(String e, int s) {             // C
+            super(e);
+            synyp = s;
+          }
+        }
+
+        public class Mektep {
+          public static void main(String[] args) {
+            Bala b = new Bala();
+            System.out.println(b.getEsim());
+            Bala c = new Bala("Asel", 3);
+            System.out.println(c.getEsim());
+          }
+        }
+
+        1. C конструкторындағы super(e); жолын өшірсек, код компиляцияланады, себебі компилятор конструкторға super() шақыруын өзі қосады. (5 ұпай)
+        2. B конструкторындағы super(s + 6, "Aidar"); жолын super("Aidar", s + 6); деп өзгертсек, код компиляцияланады, себебі Ata класында int және String параметрлері бар конструктор бар. (5 ұпай)
+        3. B конструкторында synyp = s; жолын super(s + 6, "Aidar"); жолының алдына ауыстырсақ, код компиляцияланбайды, себебі super() шақыруы конструктордың бірінші операторы болуы керек. (5 ұпай)
+        4. main ішіне Bala d = new Bala("Marat"); жолын қоссақ, код компиляцияланады, себебі Bala класы Ata(String) конструкторын Ata класынан мұраға алады (inheritance). (5 ұпай)
+        5. new Bala() шақырылғанда A конструкторы this(1) арқылы B конструкторын шақырады, сондықтан бағдарлама бірінші жол ретінде «Aidar» шығарады. (4 ұпай)
+    - id: J09-К-03
+      text: |
+        Бағдарламаны оқыңыз.
+
+        class Sagat {
+          int minut;
+        }
+
+        public class Kun {
+          int sanaq;
+
+          public void tan() {
+            int a = 3;
+            oyanu(a + 2);                            // 1-жол
+            sanaq = a;
+          }
+
+          public void oyanu(int p) {
+            Sagat sg = new Sagat();
+            sg.minut = p * 10;
+            shai();                                  // 2-жол
+            System.out.println(sg.minut);
+          }
+
+          public void shai() {
+            boolean ystyq = true;                    // 3-жол
+          }
+
+          public static void main(String[] args) {
+            Kun k = new Kun();
+            k.tan();
+            System.out.println(k.sanaq);
+          }
+        }
+
+        1. 3-жол орындалып жатқанда oyanu() әдісінің sg айнымалысы өлі (стекте жоқ), себебі жергілікті айнымалы (local variable) тек өз әдісінің фреймі стектің (stack) ең жоғарғы фреймі болғанда ғана өмір сүреді. (5 ұпай)
+        2. 3-жолдан кейін sg.minut = 0; жолын қоссақ, код компиляцияланбайды, себебі sg — oyanu() әдісінің жергілікті айнымалысы, ал shai() ішінде ол көріну аймағында (scope) емес. (5 ұпай)
+        3. oyanu() әдісінің p параметрі де жергілікті айнымалы болып саналады: ол oyanu() фреймімен бірге стекке қосылады және oyanu() аяқталғанда фреймімен бірге жойылады. (5 ұпай)
+        4. tan() аяқталып, оның фреймі стектен алынғанда, sanaq айнымалысы да жойылады, сондықтан бағдарлама соңғы жол ретінде 0 шығарады. (5 ұпай)
+        5. oyanu() аяқталып, оның фреймі стектен алынғанда, үйіндідегі (heap) Sagat объектісі қоқыс жинаушы (garbage collector) үшін кандидат болады, себебі оған сілтейтін жалғыз sg айнымалысы фреймімен бірге жойылды. (4 ұпай)
+  functional:
+    heading: ФУНКЦИОНАЛДЫҚ ДЕҢГЕЙ (32 ұпай)
+    points: 32
+    instructions: |
+      Бағдарламаның орындалуын қадамдап бақылаңыз (trace). Кестенің әр жолы — бір оператор (statement). Әр жол орындалғаннан КЕЙІНГІ толық жағдайды жазыңыз: «Стек» бағанына — стектегі (stack) барлық фреймдерді және олардағы айнымалыларды, «Үйінді» бағанына — үйіндідегі (heap) барлық объектілерді. Әр жол — 4 ұпай (2 + 2).
+      Белгілеулер:
+      - сілтеме (reference) — a→1; бос сілтеме — b=null;
+      - үйіндідегі объект — 1 Alma объекті (salmaq=0);
+      - бірде-бір сілтеме арқылы жетуге болмайтын объект — «— GC кандидаты»;
+      - стекте фреймдер жоғарыдан төмен жазылады, ең үстінде — қазір орындалып жатқан әдіс немесе конструктор: tekser(): b=7 / main(): o→1; айнымалысы жоқ фрейм — getJas(): —;
+      - конструктордың (constructor) фреймі — Alma(): s=5 (this жазылмайды); Object() конструкторы жазылмайды;
+      - «(… ішінде)» — шақырылған әдістің немесе конструктордың денесіндегі оператор (return операторы да жеке жол); қайта жүктелген (overloaded) конструкторлар параметрлерімен ажыратылады: (Alma() ішінде), (Alma(int s) ішінде);
+      - super(…) және this(…) шақырулары жеке жол болып жазылмайды — тек конструкторлар денесіндегі операторлар жазылады;
+      - туынды класс (subclass) объектісінің өрістерін жазғанда базалық кластың (superclass) өрістері бірінші жазылады; әлі мән берілмеген өріс — 0 немесе null;
+      - «(қайтқаннан кейін)» — әдіс (немесе конструктор) аяқталып, оның нәтижесі айнымалыға меншіктелгеннен кейінгі жағдай (оның фреймі бұл кезде стекте жоқ);
+      - void әдісті шақыру жеке жол болып жазылмайды — тек оның денесіндегі операторлар жазылады.
+    questions:
+    - id: J09-Ф-01
+      text: |
+        class Januar {
+          private int jas;
+
+          Januar(int j) {
+            jas = j;
+          }
+        }
+
+        class Mysyq extends Januar {
+          private int salmaq;
+
+          Mysyq(int m, int s) {
+            super(m + 1);
+            int x = s * 3;
+            salmaq = x;
+          }
+        }
+
+        class Barys extends Mysyq {
+          int daq;
+
+          Barys(int d) {
+            super(d * 2, d);
+            daq = d + 10;
+          }
+        }
+
+        public class Hayvanat {
+          public static void main(String[] args) {
+            Barys b = new Barys(4);
+            Januar a = b;
+            b = null;
+            a = null;
+          }
+        }
+
+        Нұсқау: кесте main-дағы new Barys(4) шақыруынан басталады; 1-жол — конструкторлар тізбегінде (constructor chaining) бірінші орындалатын оператор.
+
+        | № | Код                                          | Стек | Үйінді |
+        |---|----------------------------------------------|------|--------|
+        | 1 | (Januar(…) ішінде) jas = j;                  |      |        |
+        | 2 | (Mysyq(…) ішінде) int x = s * 3;             |      |        |
+        | 3 | (Mysyq(…) ішінде) salmaq = x;                |      |        |
+        | 4 | (Barys(…) ішінде) daq = d + 10;              |      |        |
+        | 5 | Barys b = new Barys(4); (қайтқаннан кейін)   |      |        |
+        | 6 | Januar a = b;                                |      |        |
+        | 7 | b = null;                                    |      |        |
+        | 8 | a = null;                                    |      |        |
+    - id: J09-Ф-02
+      text: |
+        class Tus {
+          int kod;
+
+          Tus(int k) {
+            kod = k;
+          }
+        }
+
+        class Ata {
+          private int olshem;
+
+          Ata(int n) {
+            olshem = n;
+          }
+        }
+
+        class Bala extends Ata {
+          Tus tus;
+          int jyl;
+
+          Bala() {
+            this(new Tus(7));
+            jyl = jyl + 1;
+          }
+
+          Bala(Tus t) {
+            super(t.kod + 1);
+            tus = t;
+            jyl = t.kod * 2;
+          }
+        }
+
+        public class Otbasy {
+          public static void main(String[] args) {
+            Bala b = new Bala();
+            Tus tk = b.tus;
+            b = null;
+          }
+        }
+
+        Нұсқау: кесте main-дағы new Bala() шақыруынан басталады; 1-жол — Bala объектісін құру кезінде бірінші орындалатын меншіктеу (assignment) операторы.
+
+        | № | Код                                          | Стек | Үйінді |
+        |---|----------------------------------------------|------|--------|
+        | 1 | (Tus(…) ішінде) kod = k;                     |      |        |
+        | 2 | (Ata(…) ішінде) olshem = n;                  |      |        |
+        | 3 | (Bala(Tus t) ішінде) tus = t;                |      |        |
+        | 4 | (Bala(Tus t) ішінде) jyl = t.kod * 2;        |      |        |
+        | 5 | (Bala() ішінде) jyl = jyl + 1;               |      |        |
+        | 6 | Bala b = new Bala(); (қайтқаннан кейін)      |      |        |
+        | 7 | Tus tk = b.tus;                              |      |        |
+        | 8 | b = null;                                    |      |        |
+    - id: J09-Ф-03
+      text: |
+        public class Qorap {
+          int belgi;
+
+          public static Qorap jasa() {
+            Qorap jana = new Qorap();
+            belgile(jana);
+            return jana;
+          }
+
+          public static void belgile(Qorap koshirme) {
+            Qorap jergilikti = new Qorap();
+            koshirme.belgi = 5;
+          }
+
+          public static void main(String[] args) {
+            Qorap q1 = new Qorap();
+            Qorap q2 = q1;
+            Qorap q3 = jasa();
+            q1 = q3;
+          }
+        }
+
+        | № | Код                                                | Стек | Үйінді |
+        |---|----------------------------------------------------|------|--------|
+        | 1 | Qorap q1 = new Qorap();                            |      |        |
+        | 2 | Qorap q2 = q1;                                     |      |        |
+        | 3 | (jasa ішінде) Qorap jana = new Qorap();            |      |        |
+        | 4 | (belgile ішінде) Qorap jergilikti = new Qorap();   |      |        |
+        | 5 | (belgile ішінде) koshirme.belgi = 5;               |      |        |
+        | 6 | (jasa ішінде) return jana;                         |      |        |
+        | 7 | Qorap q3 = jasa(); (қайтқаннан кейін)              |      |        |
+        | 8 | q1 = q3;                                           |      |        |
+  systemic:
+    heading: ЖҮЙЕЛІК ДЕҢГЕЙ (44 ұпай)
+    points: 44
+    instructions: |
+      Кодтағы ? белгісінің орнына қойылатын мән (жасалатын объектілер саны, конструктор (constructor) аргументтері) — тесттің кірісі (input). 4 ТЕСТ ойлап табыңыз. Әр тест үшін жазыңыз:
+      1. кіріс мәні — әр ? орнына қандай мән қойылады;
+      2. күтілетін нәтиже (expected result) — талап (requirement) бойынша бағдарлама экранға не шығаруы керек;
+      3. тест нені тексереді — қай конструктор орындалады (қайта жүктелген (overloaded) конструкторлардың қайсысы таңдалады, super(...) немесе this(...) арқылы конструкторлар қандай ретпен шақырылады), if-тің қай тармағы орындалады, қай шекара (boundary) тексеріледі.
+
+      Тесттер әртүрлі жағдайларды тексеруі керек. Егер бағдарлама талапқа сай келмейтін тест тапсаңыз, оны көрсетіңіз. Әр тест — 8 ұпай (кіріс 2 + күтілетін нәтиже 3 + нені тексереді 3), қорғау (defense) — 12 ұпай.
+    questions:
+    - id: J09-С-01
+      text: |
+        import java.util.ArrayList;
+
+        class Bolshek {                    // бөлшек (SimUnit)
+          String turi;
+
+          Bolshek(String t) {
+            turi = t;
+          }
+
+          int quat() {                     // қуат шығыны (power use)
+            if ("jyly".equals(turi)) {
+              return 3;
+            } else {
+              return 5;
+            }
+          }
+        }
+
+        class SalqynV2 {                   // салқындатқыш, 2-нұсқа (V2Radiator)
+          SalqynV2(ArrayList<Bolshek> tizim) {
+            for (int i = 0; i < 2; i++) {
+              tizim.add(new Bolshek("V2"));
+            }
+          }
+        }
+
+        class SalqynV3 extends SalqynV2 {  // салқындатқыш, 3-нұсқа (V3Radiator)
+          SalqynV3(ArrayList<Bolshek> tizim) {
+            super(tizim);
+            for (int i = 0; i < 3; i++) {
+              tizim.add(new Bolshek("V3"));
+            }
+          }
+        }
+
+        class JylyBot {                    // жылу сақтаушы бот (RetentionBot)
+          JylyBot(ArrayList<Bolshek> tizim) {
+            tizim.add(new Bolshek("jyly"));
+          }
+        }
+
+        public class JuieTest {
+          public static void main(String[] args) {
+            ArrayList<Bolshek> tizim = new ArrayList<Bolshek>();
+            int a = ?;                     // тест кірісі: SalqynV2 объектілерінің саны
+            int b = ?;                     // тест кірісі: SalqynV3 объектілерінің саны
+            int c = ?;                     // тест кірісі: JylyBot объектілерінің саны
+            for (int i = 0; i < a; i++) {
+              SalqynV2 s2 = new SalqynV2(tizim);
+            }
+            for (int i = 0; i < b; i++) {
+              SalqynV3 s3 = new SalqynV3(tizim);
+            }
+            for (int i = 0; i < c; i++) {
+              JylyBot j = new JylyBot(tizim);
+            }
+            int v2 = 0;
+            int v3 = 0;
+            int jy = 0;
+            int quat = 0;
+            for (Bolshek bl : tizim) {
+              if (bl.turi.equals("V2")) {
+                v2++;
+              } else if (bl.turi.equals("V3")) {
+                v3++;
+              } else {
+                jy++;
+              }
+              quat = quat + bl.quat();
+            }
+            System.out.println("V2=" + v2 + " V3=" + v3 + " jyly=" + jy + " quat=" + quat);
+          }
+        }
+
+        Талап: a, b, c — 0-ден 3-ке дейінгі бүтін сандар: a — SalqynV2, b — SalqynV3, c — JylyBot объектілерінің саны. Әр объект жасалғанда (өз конструкторында) ортақ tizim тізіміне өз бөлшектерін қосады: SalqynV2 — 2 «V2» бөлшегін; SalqynV3 — тек 3 «V3» бөлшегін (жаңа модель ескі «V2» бөлшектерін қоспайды); JylyBot — 1 «jyly» бөлшегін. Бөлшектің қуаты: «jyly» — 3, «V2» мен «V3» — 5. Бағдарлама бір жол шығарады: «V2=… V3=… jyly=… quat=…» — әр түрдің бөлшек саны және барлық бөлшектер қуатының қосындысы.
+    - id: J09-С-02
+      text: |
+        class Qaz {                        // қаз (Duck)
+          private int salmaq = 6;          // салмақ (kilos)
+          private float qalqu = 2.1F;      // қалқу (floatability)
+          private int jyldamdyq = 25;      // жылдамдық (maxSpeed)
+          private boolean ushady = true;   // ұшады (canFly)
+
+          public Qaz(int s, float q) {
+            salmaq = s;
+            qalqu = q;
+            System.out.println("1-tip qaz");
+          }
+
+          public Qaz(float q, int jyldamdyq) {
+            qalqu = q;
+            jyldamdyq = jyldamdyq;
+            System.out.println("2-tip qaz");
+          }
+
+          public Qaz(boolean u, int s) {
+            ushady = u;
+            salmaq = s;
+            System.out.println("3-tip qaz");
+          }
+
+          public Qaz(int j, boolean u) {
+            jyldamdyq = j;
+            ushady = u;
+            System.out.println("4-tip qaz");
+          }
+
+          void korset() {
+            System.out.println("salmaq=" + salmaq + " qalqu=" + qalqu
+                + " jyldamdyq=" + jyldamdyq + " ushady=" + ushady);
+          }
+        }
+
+        public class QazTest {
+          public static void main(String[] args) {
+            Qaz q = new Qaz(?, ?);         // тест кірісі: екі аргумент
+            q.korset();
+          }
+        }
+
+        Талап: ? орнына Qaz класының төрт конструкторының біріне типтері мен реті бойынша дәл сәйкес келетін екі литерал қойылады (int; float — F әрпімен, мысалы 2.5F; немесе boolean). Бағдарлама алдымен таңдалған конструктордың нөмірін шығарады, содан кейін қаздың төрт өрісін: «salmaq=… qalqu=… jyldamdyq=… ushady=…». Әр конструктор аргументтерінің мәндерін сәйкес өрістерге жазады: 1-tip (int, float) — salmaq, qalqu; 2-tip (float, int) — qalqu, jyldamdyq; 3-tip (boolean, int) — ushady, salmaq; 4-tip (int, boolean) — jyldamdyq, ushady. Қалған өрістер бастапқы мәндерін сақтайды: salmaq=6, qalqu=2.1, jyldamdyq=25, ushady=true.
+    - id: J09-С-03
+      text: |
+        class Qus {                        // құс (базалық класс)
+          Qus(String turi) {
+            System.out.println(turi + " jasaldy");
+          }
+        }
+
+        class Uirek extends Qus {          // үйрек (Duck2)
+          int olshem;                      // өлшем (size)
+
+          Uirek() {
+            this(12);                      // әдепкі өлшем (default size)
+            System.out.println("adepki uirek");
+          }
+
+          Uirek(int o) {
+            super("uirek");
+            if (o < 3) {
+              olshem = 3;
+              System.out.println("kishi: 3 qoiyldy");
+            } else if (o < 30) {
+              olshem = o;
+            } else {
+              olshem = 30;
+              System.out.println("ulken: 30 qoiyldy");
+            }
+            System.out.println("olshem = " + olshem);
+          }
+        }
+
+        public class UirekTest {
+          public static void main(String[] args) {
+            Uirek u = new Uirek(?);        // тест кірісі: бүтін сан немесе бос
+          }
+        }
+
+        Талап: ? орнына бүтін сан қойылады немесе ештеңе қойылмайды (new Uirek() — аргументсіз конструктор). Үйректің рұқсат етілген өлшемі — 3-тен 30-ға дейін (екі шегі де кіреді). Әр жаңа үйрек жасалғанда алдымен «uirek jasaldy» жолы шығады. Өлшем рұқсат етілген аралықта болса, сол күйінде сақталады; 3-тен кіші болса — өлшем 3 болады және «kishi: 3 qoiyldy» шығады; 30-дан үлкен болса — өлшем 30 болады және «ulken: 30 qoiyldy» шығады. Содан кейін «olshem = X» жолы шығады. Аргументсіз жасалған үйректің өлшемі — 12 (әдепкі), және ең соңында «adepki uirek» жолы шығады.

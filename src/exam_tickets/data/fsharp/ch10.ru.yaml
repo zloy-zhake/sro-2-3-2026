@@ -1,0 +1,464 @@
+subject: fsharp
+language: ru
+file_chapter: 10
+chapters:
+- 10
+chapter_titles:
+- Working effectively with data
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      В каждом задании дан фрагмент кода на F# и 5 утверждений о нём. Для каждого утверждения укажите, ВЕРНО оно или НЕВЕРНО, и объясните почему: назовите правило языка и покажите, как оно действует в этом коде. Компьютер не нужен: всё, что нужно для ответа, есть в условии.
+      Баллы: утверждения 1–4 — по 5 баллов (1 за «верно/неверно» + 4 за обоснование), утверждение 5 — 4 балла (1 + 3). Всего 24 балла.
+    questions:
+    - id: F10-К-01
+      text: |
+        Прочитайте код. Пакет FsToolkit.ErrorHandling подключён (его вычислительное выражение result { } и функция List.traverseResultM — те же, что в главах 9–10). Скрипт выполняется целиком сверху вниз.
+
+        #r "nuget: FsToolkit.ErrorHandling"
+        open System
+        open System.Text.Json
+        open FsToolkit.ErrorHandling
+
+        type Maker = Maker of string
+        type Strings = Four | Five | Six
+        type Pickup = Precision | Jazz
+        type Kind =
+            | Acoustic
+            | Electric of Pickup list
+        type Bass = { Maker: Maker; Strings: Strings; Kind: Kind }
+
+        type RawBass =
+            {
+                Maker: string
+                Strings: string
+                Pickups: string list
+            }
+
+        let tryAsBass (raw: RawBass) = result {
+            let! maker =
+                if String.IsNullOrWhiteSpace raw.Maker then
+                    Error "Maker is required"
+                else
+                    Ok (Maker raw.Maker)
+
+            let! strings =
+                match raw.Strings with
+                | "4" -> Ok Four
+                | "5" -> Ok Five
+                | "6" -> Ok Six
+                | value -> Error $"Bad strings '{value}'"
+
+            let! pickups =
+                raw.Pickups
+                |> List.traverseResultM (fun code ->
+                    match code with
+                    | "P" -> Ok Precision
+                    | "J" -> Ok Jazz
+                    | value -> Error $"Unknown pickup {value}")
+
+            return
+                {
+                    Bass.Maker = maker
+                    Bass.Strings = strings
+                    Bass.Kind =
+                        match pickups with
+                        | [] -> Acoustic
+                        | pickups -> Electric pickups
+                }
+        }
+
+        let fenderJson = """
+            { "Maker" : "Fender",
+              "Strings" : "5",
+              "Pickups" : [ "J", "X", "Q" ] }"""
+
+        let bassResult =
+            fenderJson
+            |> JsonSerializer.Deserialize
+            |> tryAsBass
+
+        1. Значение bassResult — Error, в котором собраны обе ошибки: и про "X", и про "Q", потому что List.traverseResultM проверяет все коды звукоснимателей и объединяет ошибки. (5 баллов)
+        2. Вызов tryAsBass { Maker = ""; Strings = "9"; Pickups = [] } возвращает Error "Maker is required": после первой ошибки в let! вычисление result { } прекращается, и строка Strings уже не проверяется. (5 баллов)
+        3. В конвейере let bassResult = fenderJson |> JsonSerializer.Deserialize |> tryAsBass не указан тип-параметр Deserialize<RawBass>, поэтому этот код не скомпилируется. (5 баллов)
+        4. Вызов tryAsBass { Maker = "Yamaha"; Strings = "4"; Pickups = [] } возвращает Ok, а поле Kind в результате равно Acoustic. (5 баллов)
+        5. Тип функции tryAsBass — RawBass -> Result<Bass, string>. (4 балла)
+    - id: F10-К-02
+      text: |
+        Прочитайте код. Скрипт выполняется целиком сверху вниз.
+
+        open System.Text.Json
+
+        type Author = Author of string
+        type Book = { Author: Author; Title: string; Pages: int }
+
+        let createReport (books: Book list) =
+            books
+            |> List.countBy (fun book -> book.Author)
+            |> List.map (fun ((Author name), count) ->
+                {| Writer = name; Books = count |})
+            |> JsonSerializer.Serialize
+
+        let library =
+            [ { Author = Author "Abai"; Title = "Qara sozder"; Pages = 120 }
+              { Author = Author "Auezov"; Title = "Kokserek"; Pages = 48 }
+              { Author = Author "Abai"; Title = "Olender"; Pages = 300 } ]
+
+        let report = createReport library
+
+        let parsed =
+            """{ "title": "Abai joly", "year": 1942 }"""
+            |> JsonSerializer.Deserialize<{| title: string; year: int |}>
+
+        1. Чтобы строка {| Writer = name; Books = count |} скомпилировалась, тип с полями Writer и Books нужно заранее объявить через type. (5 баллов)
+        2. В лямбде fun ((Author name), count) -> ... образец (Author name) прямо в параметре извлекает строку из одновариантного объединения (single-case discriminated union) Author, поэтому name имеет тип string. (5 баллов)
+        3. Вызов createReport [] завершится исключением во время выполнения, потому что в пустом списке нечего подсчитывать с помощью List.countBy. (5 баллов)
+        4. Если дописать в конец строку parsed.year <- 1950, она скомпилируется и изменит год в значении parsed. (5 баллов)
+        5. Функция createReport возвращает строку (string), потому что последний шаг конвейера — JsonSerializer.Serialize. (4 балла)
+    - id: F10-К-03
+      text: |
+        Прочитайте код. Пакет FSharp.Data подключён; провайдер типов (type provider) JsonProvider — тот же, что в главе 10. Скрипт выполняется целиком сверху вниз.
+
+        #r "nuget: FSharp.Data"
+        open FSharp.Data
+
+        [<Literal>]
+        let BookSample = """{
+            "Title": "Abai joly",
+            "Pages": "640",
+            "Tags": [ "novel", "history" ] }"""
+
+        type BookJson = JsonProvider<BookSample>
+        let sample = BookJson.GetSample()
+        let info = $"{sample.Title}: {sample.Pages} pages"
+
+        [<Literal>]
+        let ShelfSample = """[
+            { "Title": "Abai joly", "Year": 1942 },
+            { "Title": "Kokserek" } ]"""
+
+        type ShelfJson = JsonProvider<ShelfSample>
+        let shelf = ShelfJson.GetSamples()
+        let years = shelf |> Array.map (fun book -> book.Year)
+
+        1. Свойство sample.Pages имеет тип int, хотя в образце значение "640" записано в кавычках: провайдер выводит тип по содержимому образца. (5 баллов)
+        2. Атрибут [<Literal>] перед BookSample можно удалить: строка и так задана через let, поэтому JsonProvider<BookSample> по-прежнему скомпилируется. (5 баллов)
+        3. Если в образце BookSample переименовать поле "Title" в "Name", а остальной код не менять, ошибка появится только во время выполнения — при вычислении строки let info. (5 баллов)
+        4. Значение years имеет тип int option array (в FSI — Option<int> array) и равно [|Some 1942; None|]: у второго элемента образца нет поля Year, поэтому провайдер делает поле необязательным (option). (5 баллов)
+        5. Значение info — строка "Abai joly: 640 pages". (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Трассировочная таблица (trace table) конвейера (pipeline). Код — сеанс FSI (F# Interactive): команды отправляются в FSI по очереди, сверху вниз, каждая заканчивается ;;. Первый столбец таблицы — шаг конвейера — уже заполнен (длинные шаги сокращены «...», полный текст — в коде). Для каждого шага заполните два столбца:
+      - «Тип» — тип имени, которое связывает шаг, в нотации FSI, например int; string list; (string * decimal) array; Command option list; анонимная запись (anonymous record) — {| Name: string; Age: int |} list.
+      - «Значение после шага» — значение этого имени, например 42; "Aru"; [1; 2; 3]; [|("a", 5M)|]; Some 5 / None; ("a", 1); анонимная запись — {| Name = "Aru"; Age = 20 |}.
+      - Если шаг не компилируется, в столбце «Тип» напишите «ошибка компиляции», а в столбце «Значение» — причину. Такой шаг считается удалённым и на следующие шаги не влияет.
+      Баллы: 8 строк × 4 балла = 32. В каждой строке: «Тип» — 2 балла, «Значение после шага» — 2 балла.
+    questions:
+    - id: F10-Ф-01
+      text: |
+        open System.Text.Json
+
+        type Brand = Brand of string
+        type Strings = Six | Seven | Eight | Twelve
+        type Pickup = Single | Humbucker
+        type Kind = Acoustic | Electric of Pickup list
+        type Guitar = { Brand: Brand; Strings: Strings; Kind: Kind }
+
+        let make brand strings kind = { Brand = Brand brand; Strings = strings; Kind = kind }
+
+        let guitars = [
+            make "Fender" Seven (Electric [ Single ])     // гитара 1
+            make "Gibson" Seven (Electric [ Humbucker ])  // гитара 2
+            make "Cort" Six Acoustic                      // гитара 3
+            make "Fender" Twelve Acoustic                 // гитара 4
+            make "Yamaha" Twelve Acoustic                 // гитара 5
+            make "Gibson" Eight (Electric [ Single ])     // гитара 6
+            make "Fender" Eight Acoustic                  // гитара 7
+        ];;
+        let s1 = guitars |> List.filter (fun g -> g.Strings <> Six);;
+        let s2 = s1 |> List.countBy (fun g -> g.Brand);;
+        let s3 = s2 |> List.map (fun ((Brand brand), count) -> {| Brand = brand; Guitars = count |});;
+        let s4 = s3 |> List.sortBy (fun r -> r.Guitars);;
+        let s5 = s4 |> JsonSerializer.Serialize;;
+        let s6 = s2 |> List.sumBy snd;;
+        let (Brand s7) = s2 |> List.head |> fst;;
+        let s8 = s3 |> List.map (fun r -> r.Count);;
+
+        Заполните таблицу. Для списка гитар (Guitar list) в столбце «Значение» достаточно перечислить номера гитар из комментариев, например «гитары 1, 3». Строку JSON запишите целиком, без пробелов; кавычки внутри строки экранировать (\") не нужно.
+
+        | № | Шаг конвейера (pipeline)                   | Тип            | Значение после шага |
+        |---|--------------------------------------------|----------------|---------------------|
+        | 1 | let s1 = guitars |> List.filter ...        |                |                     |
+        | 2 | let s2 = s1 |> List.countBy ...            |                |                     |
+        | 3 | let s3 = s2 |> List.map ...                |                |                     |
+        | 4 | let s4 = s3 |> List.sortBy ...             |                |                     |
+        | 5 | let s5 = s4 |> JsonSerializer.Serialize    |                |                     |
+        | 6 | let s6 = s2 |> List.sumBy snd              |                |                     |
+        | 7 | let (Brand s7) = s2 |> List.head |> fst    |                |                     |
+        | 8 | let s8 = s3 |> List.map (fun r -> r.Count) |                |                     |
+    - id: F10-Ф-02
+      text: |
+        type Command =
+            | Deposit of int
+            | Withdraw of int
+
+        let isNotStop (line: string) = line <> "stop"
+
+        let asCommand (line: string) =
+            match line.Split ' ' |> List.ofArray with
+            | [ "dep"; amount ] -> Some (Deposit (int amount))
+            | [ "wd"; amount ] -> Some (Withdraw (int amount))
+            | _ -> None
+
+        let applyCommand (balance: int) (command: Command) =
+            match command with
+            | Deposit amount -> balance + amount
+            | Withdraw amount -> balance - amount
+
+        // строки, «введённые с консоли»
+        let lines = [ "dep 50"; "wd 20"; "hello"; "dep 5"; "stop"; "dep 100" ];;
+        let s1 = lines |> List.takeWhile isNotStop;;
+        let s2 = s1 |> List.choose asCommand;;
+        let s3 = s2 |> List.fold applyCommand 0;;
+        let s4 = lines |> List.filter isNotStop;;
+        let s5 = s4 |> List.choose asCommand |> List.fold applyCommand 0;;
+        let s6 = lines |> List.map asCommand;;
+        let s7 = [ "stop"; "dep 1" ] |> List.takeWhile isNotStop |> List.choose asCommand |> List.fold applyCommand 0;;
+        let s8 = s2 |> List.fold (applyCommand 0);;
+
+        Заполните таблицу. Вызов int "50" превращает строку в число 50; line.Split ' ' делит строку по пробелам на массив, List.ofArray превращает его в список.
+
+        | № | Шаг конвейера (pipeline)                        | Тип            | Значение после шага |
+        |---|-------------------------------------------------|----------------|---------------------|
+        | 1 | let s1 = lines |> List.takeWhile isNotStop      |                |                     |
+        | 2 | let s2 = s1 |> List.choose asCommand            |                |                     |
+        | 3 | let s3 = s2 |> List.fold applyCommand 0         |                |                     |
+        | 4 | let s4 = lines |> List.filter isNotStop         |                |                     |
+        | 5 | let s5 = s4 |> List.choose ... |> List.fold ... |                |                     |
+        | 6 | let s6 = lines |> List.map asCommand            |                |                     |
+        | 7 | let s7 = [ "stop"; "dep 1" ] |> ...             |                |                     |
+        | 8 | let s8 = s2 |> List.fold (applyCommand 0)       |                |                     |
+    - id: F10-Ф-03
+      text: |
+        // район, население (тыс. человек), площадь (км²)
+        let districts = [|
+            ("Almaly", 240M, 8M)
+            ("Bostandyk", 350M, 14M)
+            ("Medeu", 210M, 42M)
+            ("Turksib", 240M, 20M)
+        |];;
+        let density = districts |> Array.map (fun (name, people, area) -> name, people / area);;
+        let s2 = density |> Array.sortBy snd;;
+        let s3 = density |> Array.sortByDescending snd;;
+        let s4 = s3 |> Array.map fst;;
+        let s5 = s3 |> Array.filter (fun (_, d) -> d >= 12M);;
+        let s6 = density |> Array.maxBy snd;;
+        let s7 = density |> Array.sumBy snd;;
+        let s8 = [| ("Auezov", 300, 25M) |] |> Array.map (fun (name, people, area) -> name, people / area);;
+
+        Заполните таблицу. Значения типа decimal записывайте с суффиксом M, например 5M.
+
+        | № | Шаг конвейера (pipeline)                       | Тип            | Значение после шага |
+        |---|------------------------------------------------|----------------|---------------------|
+        | 1 | let density = districts |> Array.map ...       |                |                     |
+        | 2 | let s2 = density |> Array.sortBy snd           |                |                     |
+        | 3 | let s3 = density |> Array.sortByDescending snd |                |                     |
+        | 4 | let s4 = s3 |> Array.map fst                   |                |                     |
+        | 5 | let s5 = s3 |> Array.filter ...                |                |                     |
+        | 6 | let s6 = density |> Array.maxBy snd            |                |                     |
+        | 7 | let s7 = density |> Array.sumBy snd            |                |                     |
+        | 8 | let s8 = [| ("Auezov", 300, 25M) |] |> ...     |                |                     |
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Дан фрагмент кода с функцией. Значения, помеченные «?», — входные данные теста (input). Придумайте 4 ТЕСТА. Для каждого теста запишите:
+      1. входные данные — что подставляется вместо «?»;
+      2. ожидаемый результат (expected result) — что функция должна вернуть по требованию (requirement), записанному под кодом;
+      3. что проверяет тест — какой путь выполнения (path), какую границу (boundary) или какой особый случай.
+
+      Тесты должны проверять разные случаи. Если вы нашли тест, на котором код не выполняет требование, отметьте его и объясните, что код вернёт или сделает на самом деле.
+      Баллы: каждый тест — 8 (входные данные 2 + ожидаемый результат 3 + что проверяет 3), защита (defense) — 12. Всего 44.
+      Результаты записывайте как в FSI: Ok …, Error "…", список [1; 2], массив [|("A", 300M)|], число 35. Если код вместо результата завершается исключением (exception), напишите «исключение» и его причину.
+    questions:
+    - id: F10-С-01
+      text: |
+        open System
+        open FsToolkit.ErrorHandling
+
+        type Maker = Maker of string
+        type Strings = Four | Five | Six
+        type Pickup = Precision | Jazz
+        type Body =
+            | Acoustic
+            | Electric of Pickup list
+        type Bass = { Maker : Maker; Strings : Strings; Body : Body }
+
+        // «Сырые» данные из JSON: только примитивы
+        type RawBass = { Maker: string; Strings: string; Pickups: string list }
+
+        let tryAsBass (raw: RawBass) = result {
+            let! maker =
+                if String.IsNullOrEmpty raw.Maker then
+                    Error "Maker is mandatory"
+                else
+                    Ok (Maker raw.Maker)
+
+            let! strings =
+                match raw.Strings with
+                | "4" -> Ok Four
+                | "5" -> Ok Five
+                | "6" -> Ok Six
+                | value -> Error $"Bad strings '{value}'"
+
+            let! pickups =
+                raw.Pickups
+                |> List.traverseResultM (fun code ->
+                    match code with
+                    | "P" -> Ok Precision
+                    | "J" -> Ok Jazz
+                    | value -> Error $"Bad pickup {value}")
+
+            return
+                {
+                    Bass.Maker = maker
+                    Bass.Strings = strings
+                    Bass.Body =
+                        match pickups with
+                        | [] -> Acoustic
+                        | pickups -> Electric pickups
+                }
+        }
+
+        tryAsBass { Maker = ?; Strings = ?; Pickups = ? }    // три ? — поля сырых данных
+
+        Требование: функция tryAsBass проверяет сырые данные (RawBass) и возвращает Result<Bass, string>.
+        - Марка (Maker) обязательна: null, пустая строка "" и строка только из пробелов (например "   ") означают «марки нет» -> Error "Maker is mandatory".
+        - Число струн (Strings): "4", "5", "6" -> Four, Five, Six; любое другое значение -> Error "Bad strings '<значение>'".
+        - Коды звукоснимателей (Pickups): "P" -> Precision, "J" -> Jazz; неверный код -> Error "Bad pickup <код>" для ПЕРВОГО неверного кода списка.
+        - Пустой список звукоснимателей -> Body = Acoustic; непустой -> Electric со звукоснимателями в том же порядке.
+        - Если ошибок несколько, возвращается первая в порядке проверки: марка, струны, звукосниматели.
+        - Если всё верно -> Ok { Maker = Maker "<марка>"; Strings = …; Body = … }.
+        Справка: в result { } (глава 9) let! x = … при Error сразу возвращает эту Error из всего выражения, следующие строки не выполняются. List.traverseResultM f список — применяет f к каждому элементу: если все результаты Ok, даёт Ok со списком значений, иначе — первую встретившуюся Error. String.IsNullOrEmpty s — true, только если s = null или s = "".
+
+        Тест 1
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 2
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 3
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 4
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тесты, на которых код не выполняет требование (если есть): № ____
+          Что код вернёт или сделает на самом деле: _______________________
+    - id: F10-С-02
+      text: |
+        type Command =
+            | Deposit of int
+            | Withdraw of int
+
+        let isNotStop (line: string) = line <> "stop"
+
+        let asCommand (line: string) =
+            match line.Split ' ' with
+            | [| "dep"; amount |] -> Some (Deposit (int amount))
+            | [| "wd"; amount |] -> Some (Withdraw (int amount))
+            | _ -> None
+
+        let applyCommand (balance: int) (command: Command) =
+            match command with
+            | Deposit amount -> balance + amount
+            | Withdraw amount -> balance - amount
+
+        let finalBalance (lines: string list) =
+            lines
+            |> List.takeWhile isNotStop
+            |> List.choose asCommand
+            |> List.fold applyCommand 0
+
+        finalBalance ?    // ? — список строк-команд (string list), вход теста
+
+        Требование: функция finalBalance получает строки-команды и возвращает итоговый баланс (int); начальный баланс 0.
+        - Обрабатываются строки до первой строки "stop" (её и всё после неё не учитывают). Если "stop" нет, обрабатываются все строки.
+        - "dep N" прибавляет N, "wd N" вычитает N (N — целое число). Баланс может стать отрицательным.
+        - Любая другая строка пропускается: неизвестная команда, другой регистр ("DEP 5"), лишние слова, а также команда, у которой N — не целое число (например "dep ten").
+        Справка: "dep 5".Split ' ' = [|"dep"; "5"|] (строка делится по каждому пробелу). int "12" = 12; int "ten" не возвращает значение, а бросает исключение FormatException. List.takeWhile p — берёт элементы с начала, пока p даёт true; List.choose f — оставляет значения x из Some x и отбрасывает None; List.fold f 0 — проходит список слева направо, начиная с 0.
+
+        Тест 1
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 2
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 3
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 4
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тесты, на которых код не выполняет требование (если есть): № ____
+          Что код вернёт или сделает на самом деле: _______________________
+    - id: F10-С-03
+      text: |
+        // Районы с наибольшей плотностью населения
+        let topDensity count (districts: (string * decimal * decimal) array) =
+            districts
+            |> Array.map (fun (name, population, area) ->
+                name, population / area)
+            |> Array.sortByDescending snd
+            |> Array.take count
+
+        topDensity ? ?    // первый ? — count (int), второй ? — массив районов
+
+        Требование: функция topDensity получает число count (0 или больше) и массив районов (название, население, площадь) и возвращает массив пар (название, плотность) для не более чем count районов с наибольшей плотностью = население / площадь, по убыванию плотности.
+        - Если районов меньше, чем count, возвращаются все районы (пустой вход -> пустой массив [||]).
+        - Район с площадью 0M — «нет данных о площади»: он пропускается.
+        - Порядок районов с одинаковой плотностью не важен. Берите в тестах числа, которые делятся нацело (например 9000M / 30M = 300M).
+        Справка: M — суффикс десятичного числа (decimal). Деление decimal на 0M бросает исключение DivideByZeroException. Array.sortByDescending snd — сортировка по второму элементу пары по убыванию. Array.take n — первые n элементов; если в массиве меньше n элементов, бросает исключение (InvalidOperationException).
+
+        Тест 1
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 2
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 3
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тест 4
+          Входные данные (?): ____________________________________________
+          Ожидаемый результат: ___________________________________________
+          Что проверяет: _________________________________________________
+
+        Тесты, на которых код не выполняет требование (если есть): № ____
+          Что код вернёт или сделает на самом деле: _______________________

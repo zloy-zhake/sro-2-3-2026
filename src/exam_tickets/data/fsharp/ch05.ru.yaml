@@ -1,0 +1,354 @@
+subject: fsharp
+language: ru
+file_chapter: 5
+chapters:
+- 5
+chapter_titles:
+- Shaping data
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      В каждом задании дан фрагмент кода на F# и 5 утверждений о нём. Для каждого утверждения укажите, ВЕРНО оно или НЕВЕРНО, и объясните почему: назовите правило языка и покажите, как оно действует в этом коде. Компьютер не нужен: всё, что нужно для ответа, есть в условии.
+      Баллы: утверждения 1–4 — по 5 баллов (1 за «верно/неверно» + 4 за обоснование), утверждение 5 — 4 балла (1 + 3). Всего 24 балла.
+    questions:
+    - id: F05-К-01
+      text: |
+        Прочитайте код.
+
+        // четыре варианта одной функции
+        let makeProfessor person =
+            let fname, _, _ = person
+            fname, "Prof"
+
+        let makeProfessorA (person: string * string * int) =
+            let fname, _, _ = person
+            fname, "Prof"
+
+        let makeProfessorB person : string * string =
+            let fname, _, _ = person
+            fname, "Prof"
+
+        let makeProfessorC (fname, _, _) =
+            fname, "Prof"
+
+        1. Тип функции makeProfessor, выведенный компилятором (type inference), — 'a * 'b * 'c -> 'a * string. (5 баллов)
+        2. Функции makeProfessorA и makeProfessorB имеют одинаковый тип, потому что в обеих есть аннотация типа (type annotation). (5 баллов)
+        3. Вызов makeProfessor (42, true, "x") компилируется и возвращает (42, "Prof"). (5 баллов)
+        4. Вызов makeProfessorC ("Aru", "Sadykova") компилируется и возвращает ("Aru", "Prof"), потому что недостающий третий элемент сопоставляется с шаблоном-заглушкой _ (wildcard). (5 баллов)
+        5. В makeProfessorC кортеж (tuple) деконструируется (deconstruction) прямо в параметре функции, а _ означает, что этот элемент не используется. (4 балла)
+    - id: F05-К-02
+      text: |
+        Прочитайте код. Все строки выполняются по порядку сверху вниз.
+
+        type Room =
+            {
+                Building : string
+                Number : int
+                Seats : int
+            }
+
+        let lab =
+            {
+                Building = "B2"
+                Number = 305
+                Seats = 24
+            }
+
+        let bigLab =
+            {
+                lab with
+                    Seats = 40
+                    Number = 410
+            }
+
+        // счётчик посещений страницы
+        type Visits = { Page : string; mutable Count : int }
+
+        let home = { Page = "home"; Count = 0 }
+        let homeCopy = { home with Page = "main" }
+        home.Count <- home.Count + 1
+
+        1. После создания bigLab значение lab.Seats равно 40. (5 баллов)
+        2. Если дописать в конец кода строку lab.Seats <- 30, программа не скомпилируется. (5 баллов)
+        3. Выражение { lab with Floor = 3 } компилируется и создаёт запись (record) типа Room с дополнительным полем Floor. (5 баллов)
+        4. После последней строки (home.Count <- home.Count + 1) значение homeCopy.Count равно 1, потому что homeCopy создан из home. (5 баллов)
+        5. Значение bigLab.Building равно "B2". (4 балла)
+    - id: F05-К-03
+      text: |
+        Прочитайте код.
+
+        let student =
+            {|
+                Name = "Aigerim"
+                Group = "IS-21"
+                Course = 2
+            |}
+
+        let studentWithEmail =
+            {|
+                student with
+                    Email = "aigerim@uni.kz"
+                    Course = 3
+            |}
+
+        let sameStudent = {| Course = 2; Group = "IS-21"; Name = "Aigerim" |}
+
+        // краткое описание студента
+        let describe (s: {| Name: string; Course: int |}) =
+            $"{s.Name}, курс {s.Course}"
+
+        1. Выражение studentWithEmail компилируется: при копировании с обновлением (copy-and-update) анонимной записи (anonymous record) можно добавлять новые поля, например Email. (5 баллов)
+        2. Выражение student = sameStudent вызовет ошибку компиляции, потому что в sameStudent поля перечислены в другом порядке. (5 баллов)
+        3. Если убрать аннотацию типа у параметра и написать let describe s = $"{s.Name}, курс {s.Course}", функция по-прежнему скомпилируется. (5 баллов)
+        4. Вызов describe student вызовет ошибку компиляции, хотя у student есть поля Name и Course. (5 баллов)
+        5. После выполнения кода student.Course равно 2, а studentWithEmail.Course равно 3. (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Проследите выполнение кода по строкам и заполните таблицу трассировки. Каждая строка таблицы — 4 балла (2 за столбец «Тип» + 2 за столбец «Значение»), всего 8 строк × 4 = 32 балла.
+      - Строки кода выполняются по порядку сверху вниз; первый столбец таблицы уже заполнен.
+      - «Тип» — тип каждого имени, которое связывает строка, в нотации FSI: x: int; p: string * int; f: a: int -> string. Скобки во вложенных кортежах (nested tuples) обязательны.
+      - «Значение» — значение каждого имени: x = 42; p = ("a", 1); запись — { Name = "Aru"; Age = 20 }; логическое значение — true / false. Для функции напишите «функция».
+      - Если строка не компилируется, в столбце «Тип» напишите «ошибка компиляции», а в столбце «Значение» — причину. Такая строка считается удалённой и на следующие строки не влияет.
+    questions:
+    - id: F05-Ф-01
+      text: |
+        // кортежи (tuples): создание, деконструкция (deconstruction), вложенность
+        let student = ("Aru", "Seitkali"), 19, "IT"
+        let fullName, years, faculty = student
+        let (first, last), _, _ = student
+        let older = (last, first), years + 1
+        let (_, family), nextYear = older
+        let label = faculty, (nextYear, first)
+        let name, group = student
+        let info = (first, years), (faculty, "A")
+
+        Заполните столбцы «Тип» и «Значение» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+        | № | Код                                         | Тип                    | Значение                   |
+        |---|---------------------------------------------|------------------------|----------------------------|
+        | 1 | let student = ("Aru", "Seitkali"), 19, "IT" |                        |                            |
+        | 2 | let fullName, years, faculty = student      |                        |                            |
+        | 3 | let (first, last), _, _ = student           |                        |                            |
+        | 4 | let older = (last, first), years + 1        |                        |                            |
+        | 5 | let (_, family), nextYear = older           |                        |                            |
+        | 6 | let label = faculty, (nextYear, first)      |                        |                            |
+        | 7 | let name, group = student                   |                        |                            |
+        | 8 | let info = (first, years), (faculty, "A")   |                        |                            |
+    - id: F05-Ф-02
+      text: |
+        let makeStudent (name: string) (surname: string) (age: int) =
+            let level = if age < 16 then "junior" else "senior"
+            (age, level), (surname, name)
+
+        let s1 = makeStudent "Dana" "Omarova" 16
+        let ageInfo, names = makeStudent "Erlan" "Bekov" 15
+        let (years, group), (fam, given) = s1
+        let partial = makeStudent "Aliya"
+        let s2 = partial "Nurlan" 12
+        let (_, kind), _ = s2
+        let wrong = makeStudent "Timur" "Ospanov" "17"
+
+        Заполните столбцы «Тип» и «Значение» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+        | № | Код                                                                        | Тип                    | Значение                   |
+        |---|----------------------------------------------------------------------------|------------------------|----------------------------|
+        | 1 | let makeStudent (name: string) (surname: string) (age: int) = … (3 строки) |                        |                            |
+        | 2 | let s1 = makeStudent "Dana" "Omarova" 16                                   |                        |                            |
+        | 3 | let ageInfo, names = makeStudent "Erlan" "Bekov" 15                        |                        |                            |
+        | 4 | let (years, group), (fam, given) = s1                                      |                        |                            |
+        | 5 | let partial = makeStudent "Aliya"                                          |                        |                            |
+        | 6 | let s2 = partial "Nurlan" 12                                               |                        |                            |
+        | 7 | let (_, kind), _ = s2                                                      |                        |                            |
+        | 8 | let wrong = makeStudent "Timur" "Ospanov" "17"                             |                        |                            |
+    - id: F05-Ф-03
+      text: |
+        type Address =
+            { Street: string
+              City: string
+              Zip: int }
+
+        type Person =
+            { Name: string * string
+              Home: Address }
+
+        let homeA = { Street = "Abay 10"; City = "Almaty"; Zip = 50000 }
+        let homeB = { homeA with City = "Astana"; Zip = 10000 }
+        homeB.City <- "Shymkent"
+        let homeC = { homeB with City = "Almaty"; Zip = 50000 }
+        let sameHome = (homeA = homeC)
+        let aru = { Name = "Aru", "Sadykova"; Home = homeA }
+        let aruMoved = { aru with Home = { homeA with Street = "Dostyk 5" } }
+        let check = (aru.Home = homeC), (aru = aruMoved)
+
+        Заполните столбцы «Тип» и «Значение» для каждой строки таблицы (правила заполнения — в начале раздела).
+
+        | № | Код                                                                   | Тип                    | Значение                   |
+        |---|-----------------------------------------------------------------------|------------------------|----------------------------|
+        | 1 | let homeA = { Street = "Abay 10"; City = "Almaty"; Zip = 50000 }      |                        |                            |
+        | 2 | let homeB = { homeA with City = "Astana"; Zip = 10000 }               |                        |                            |
+        | 3 | homeB.City <- "Shymkent"                                              |                        |                            |
+        | 4 | let homeC = { homeB with City = "Almaty"; Zip = 50000 }               |                        |                            |
+        | 5 | let sameHome = (homeA = homeC)                                        |                        |                            |
+        | 6 | let aru = { Name = "Aru", "Sadykova"; Home = homeA }                  |                        |                            |
+        | 7 | let aruMoved = { aru with Home = { homeA with Street = "Dostyk 5" } } |                        |                            |
+        | 8 | let check = (aru.Home = homeC), (aru = aruMoved)                      |                        |                            |
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Дан фрагмент кода с функцией и требование (requirement) к ней. Придумайте 4 ТЕСТА (test cases). Для каждого теста запишите:
+      1. входные данные — с какими аргументами вызывается функция;
+      2. ожидаемый результат (expected result) — что функция должна вернуть ПО ТРЕБОВАНИЮ;
+      3. что проверяет тест — какой путь выполнения (path), ветку (branch) или границу (boundary).
+
+      Тесты должны проверять разные случаи. Если вы нашли тест, на котором функция не выполняет требование, укажите это и объясните почему.
+
+      Баллы: 4 теста по 8 баллов (входные данные — 2, ожидаемый результат — 3, что проверяет — 3) = 32 балла; защита (ответы на вопросы экзаменатора) — 12 баллов. Итого 44 балла.
+    questions:
+    - id: F05-С-01
+      text: |
+        type Address =
+            {
+                Street : string
+                City : string
+                Country : string
+            }
+
+        type Delivery =
+            {
+                Courier : string * string
+                Days : int
+                Address : Address
+            }
+
+        // Выбирает службу доставки по адресу
+        let planDelivery theAddress =
+            if theAddress.Country = "KZ" then
+                {
+                    Courier = "Aru", "Express"
+                    Days = 2
+                    Address = theAddress
+                }
+            elif theAddress.Country = "UZ" then
+                {
+                    Courier = "Timur", "Cargo"
+                    Days = 5
+                    Address = theAddress
+                }
+            else
+                {
+                    Courier = "Global", "Post"
+                    Days = 10
+                    Address = theAddress
+                }
+
+        Требование (requirement): функция planDelivery получает адрес (запись Address) и возвращает запись Delivery:
+        - адрес в Казахстане (код страны KZ) — курьер ("Aru", "Express"), 2 дня;
+        - адрес в Узбекистане (код страны UZ) — курьер ("Timur", "Cargo"), 5 дней;
+        - любая другая страна — курьер ("Global", "Post"), 10 дней.
+        Код страны вводят вручную, поэтому он может быть записан любыми буквами: "KZ", "kz" и "Kz" — это один и тот же Казахстан (так же для UZ). Поле Address результата — это исходный адрес без изменений.
+
+        Входные данные теста — запись Address, например { Street = "Abay 10"; City = "Almaty"; Country = "KZ" }. Ожидаемый результат — значения полей Courier и Days.
+
+        Тест 1
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 2
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 3
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 4
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+    - id: F05-С-02
+      text: |
+        // Описывает ученика: имя, фамилия, возраст
+        let describeStudent (firstName:string) (lastName:string) (age:int) =
+            let category =
+                if age < 7 then "preschool"
+                elif age <= 18 then "school"
+                else "adult"
+            (lastName, firstName), (age, category)
+
+        Требование (requirement): функция describeStudent получает имя, фамилию и возраст (целое число, 0 или больше) и возвращает вложенный кортеж (nested tuple): сначала пара (фамилия, имя), затем пара (возраст, категория). Категория:
+        - от 0 до 6 лет включительно — "preschool";
+        - от 7 до 17 лет включительно — "school";
+        - 18 лет и старше — "adult".
+
+        Входные данные теста — три аргумента, например describeStudent "Aru" "Bek" 12. Ожидаемый результат запишите целиком, как кортеж.
+
+        Тест 1
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 2
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 3
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 4
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+    - id: F05-С-03
+      text: |
+        open System
+
+        // Разбирает строку с количеством билетов в заказе
+        let parseTickets (text:string) =
+            let parsed, count = Int32.TryParse text
+            if not parsed then
+                false, "не число"
+            elif count > 10 then
+                false, "больше 10 билетов"
+            else
+                true, $"билетов: {count}"
+
+        Справка: Int32.TryParse в F# возвращает кортеж (tuple) bool * int. Если строка — целое число (например, "42" или "-5"), результат (true, 42) / (true, -5); иначе (например, "abc", "", "2.5") — (false, 0). В тестах используйте строки без пробелов.
+
+        Требование (requirement): функция parseTickets получает текст, введённый покупателем, и возвращает кортеж (успех, сообщение):
+        - текст не является целым числом — (false, "не число");
+        - число больше 10 — (false, "больше 10 билетов");
+        - число меньше 1 (0 или отрицательное) — (false, "меньше 1 билета");
+        - число от 1 до 10 включительно — (true, "билетов: N"), где N — это число.
+
+        Входные данные теста — строка, например parseTickets "3".
+
+        Тест 1
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 2
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 3
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________
+
+        Тест 4
+          Входные данные: ______________________________________________
+          Ожидаемый результат: _________________________________________
+          Что проверяет: _______________________________________________

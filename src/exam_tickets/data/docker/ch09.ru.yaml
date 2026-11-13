@@ -1,0 +1,1097 @@
+subject: docker
+language: ru
+file_chapter: 9
+chapters:
+- 9
+chapter_titles:
+- Adding observability with containerized monitoring
+levels:
+  cognitive:
+    heading: КОГНИТИВНЫЙ УРОВЕНЬ (24 балла)
+    points: 24
+    instructions: |
+      Инструкция для студента.
+      К каждому вопросу дан фрагмент: Dockerfile, файл Docker Compose
+      (docker-compose.yml), конфигурация Prometheus (prometheus.yml) или
+      Grafana, код приложения на Python, вывод конечной точки (endpoint)
+      /metrics, описание образов и исходного состояния, команды Docker и
+      Docker Compose. После фрагмента даны 5 утверждений об этом фрагменте.
+      Все команды выполняются на компьютере с Linux; Docker Compose встроен в
+      Docker CLI (команда docker compose).
+      Справка (того, что ниже, нет в книге или оно изменилось в современных
+      версиях):
+      - в Python-приложениях метрики (metrics) собирает клиентская
+        библиотека prometheus_client:
+        Counter(имя, описание, [метки]) — счётчик (counter); у него есть
+        только метод inc(n) (n >= 0, по умолчанию 1);
+        Gauge(имя, описание) — датчик (gauge); у него есть методы inc(),
+        dec() и set(значение);
+        .labels(code="200") выбирает серию с этим значением метки (label);
+        generate_latest() возвращает текст всех метрик в формате Prometheus
+        для конечной точки /metrics; значения печатаются как дробные числа
+        (например, 9.0);
+      - библиотека prometheus_client сама добавляет метрики среды выполнения
+        (runtime) Python, например process_resident_memory_bytes — память,
+        которую занимает процесс приложения;
+      - к каждой серии, собранной с цели (target), Prometheus добавляет
+        метки job (значение job_name из prometheus.yml) и instance (адрес
+        цели в виде хост:порт);
+      - dns_sd_configs повторяет DNS-запрос периодически (по умолчанию
+        каждые 30 секунд);
+      - в Prometheus 3.x страница Graph называется Query, а пункт меню
+        Status → Targets — Status → Target health;
+      - в официальном образе Grafana переменная окружения
+        GF_PATHS_PROVISIONING равна /etc/grafana/provisioning.
+      Для каждого утверждения напишите «верно» или «неверно» и обоснуйте ответ:
+      какое правило Docker, Docker Compose, Prometheus или Grafana здесь
+      действует и что именно во фрагменте это показывает. Для неверного
+      утверждения скажите, как обстоит дело на самом деле.
+      Оценка: утверждения 1–4 — по 5 баллов (1 балл за «верно/неверно»,
+      4 балла за обоснование); утверждение 5 — 4 балла (1 + 3).
+      Ответ «верно/неверно» без обоснования оценивается только 1 баллом.
+      Итого за вопрос — 24 балла.
+    questions:
+    - id: D09-К-01
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Каталог /home/student/tickets-web содержит
+        файлы app.py и Dockerfile.
+
+        Файл app.py:
+
+        import time
+        from flask import Flask, Response, request
+        from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+        app = Flask(__name__)
+
+        # собственные метрики приложения
+        tickets_sold = Counter("tickets_sold_total", "Tickets sold")
+        buy_requests = Counter("buy_requests_total", "Requests to /buy", ["code"])
+        buy_in_flight = Gauge("buy_in_flight", "Requests to /buy in progress")
+
+
+        @app.route("/buy")
+        def buy():
+            buy_in_flight.inc()
+            try:
+                count = int(request.args.get("count", "1"))
+                if count > 5:
+                    buy_requests.labels(code="400").inc()
+                    return "too many tickets\n", 400
+                time.sleep(3)  # имитация оплаты
+                tickets_sold.inc(count)
+                buy_requests.labels(code="200").inc()
+                return "ok\n"
+            finally:
+                buy_in_flight.dec()
+
+
+        @app.route("/metrics")
+        def metrics():
+            return Response(generate_latest(), content_type=CONTENT_TYPE_LATEST)
+
+
+        app.run(host="0.0.0.0", port=5000)
+
+        Файл Dockerfile:
+
+        FROM python:3.12-slim
+        WORKDIR /app
+        RUN pip install flask prometheus_client
+        COPY app.py .
+        EXPOSE 5000
+        CMD ["python", "app.py"]
+
+        Сеть tickets-net уже создана; в ней работает контейнер Prometheus,
+        который каждые 10 секунд опрашивает (scrape) адрес
+        http://tickets-web:5000/metrics. В терминале хоста по порядку
+        выполнены команды (все успешно):
+        > cd /home/student/tickets-web
+        > docker image build -t kz/tickets-web:v1 .
+        > docker container run -d --name tickets-web --network tickets-net -p 8090:5000 kz/tickets-web:v1
+
+        Затем на адрес http://localhost:8090/buy?count=N отправили несколько
+        запросов (в каждом N — целое число, некоторые запросы — одновременно).
+        Пока ещё один запрос к /buy обрабатывался, открыли адрес
+        http://localhost:8090/metrics. Фрагмент ответа (строки *_created и
+        метрики python_*, process_* опущены):
+
+        # HELP tickets_sold_total Tickets sold
+        # TYPE tickets_sold_total counter
+        tickets_sold_total 9.0
+        # HELP buy_requests_total Requests to /buy
+        # TYPE buy_requests_total counter
+        buy_requests_total{code="200"} 4.0
+        buy_requests_total{code="400"} 2.0
+        # HELP buy_in_flight Requests to /buy in progress
+        # TYPE buy_in_flight gauge
+        buy_in_flight 1.0
+
+        Каждое утверждение рассматривайте отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. Метка code делит метрику buy_requests_total на две отдельные
+           серии. К этому моменту приложение завершило 6 запросов к /buy, из
+           них 2 отклонены с кодом 400; число всех завершённых запросов в
+           Prometheus даёт запрос sum(buy_requests_total) without(code).
+                                                                          (5 баллов)
+        2. Чтобы учитывать возвраты билетов, достаточно добавить маршрут
+           /refund, который вызывает tickets_sold.dec(); тогда
+           tickets_sold_total будет показывать число проданных билетов за
+           вычетом возвращённых.                                          (5 баллов)
+        3. При каждом опросе Prometheus заменяет у себя старое значение
+           tickets_sold_total новым, поэтому в Prometheus можно посмотреть
+           только текущее число проданных билетов, а график продаж за день
+           построить нельзя.                                              (5 баллов)
+        4. После команды docker container restart tickets-web (новых запросов
+           к /buy после неё не было) адрес http://localhost:8090/metrics
+           покажет tickets_sold_total 0.0, а не 9.0.                      (5 баллов)
+        5. buy_in_flight объявлен как Gauge, а не Counter, потому что его
+           значение должно и увеличиваться (inc() в начале запроса), и
+           уменьшаться (dec() в блоке finally, когда запрос завершён).    (4 балла)
+    - id: D09-К-02
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. Приложение продажи билетов из трёх
+        сервисов (service); все образы уже есть на компьютере:
+        - kz/tickets-web:v1 — сайт продажи билетов (Flask), слушает порт 5000.
+          При каждой покупке он вызывает http://tickets-worker:5000/pay и
+          увеличивает счётчик tickets_sold_total. Метрики отдаёт по адресу
+          /metrics;
+        - kz/tickets-worker:v1 — сервис оплаты (Flask), слушает порт 5000,
+          маршруты /pay и /metrics; при каждой оплате увеличивает счётчик
+          payments_processed_total;
+        - kz/tickets-prometheus:v1 — собран из официального образа Prometheus,
+          в него скопирован файл prometheus.yml (ниже) в
+          /etc/prometheus/prometheus.yml; веб-интерфейс Prometheus — порт 9090.
+
+        Файл prometheus.yml:
+
+        global:
+          scrape_interval: 15s
+
+        scrape_configs:
+          - job_name: "tickets-web"
+            metrics_path: /metrics
+            static_configs:
+              - targets: ["tickets-web:5000"]
+
+          - job_name: "tickets-worker"
+            metrics_path: /metrics
+            dns_sd_configs:
+              - names:
+                  - tickets-worker
+                type: A
+                port: 5000
+
+        Каталог /home/student/tickets содержит файл docker-compose.yml:
+
+        services:
+          tickets-web:
+            image: kz/tickets-web:v1
+            ports:
+              - "8090:5000"
+            networks:
+              - tickets-net
+
+          tickets-worker:
+            image: kz/tickets-worker:v1
+            networks:
+              - tickets-net
+
+          prometheus:
+            image: kz/tickets-prometheus:v1
+            ports:
+              - "9090:9090"
+            networks:
+              - tickets-net
+
+        networks:
+          tickets-net:
+
+        Контейнеров этого приложения на компьютере ещё нет. В терминале хоста,
+        в каталоге /home/student/tickets, выполнена команда (успешно):
+        > docker compose up -d --scale tickets-worker=3
+
+        После этого через сайт http://localhost:8090 покупают билеты. Каждое
+        утверждение рассматривайте отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. Через минуту после запуска на странице Status → Target health
+           Prometheus будет 4 цели (target): одна в job tickets-web и три в
+           job tickets-worker — по одной на каждый контейнер tickets-worker.
+                                                                          (5 баллов)
+        2. Если в job tickets-worker заменить dns_sd_configs на
+           static_configs с targets: ["tickets-worker:5000"], пересобрать
+           образ Prometheus и пересоздать его контейнер, Prometheus
+           по-прежнему будет собирать метрики со всех трёх контейнеров
+           tickets-worker.                                                (5 баллов)
+        3. Покупатель купил билет. Через 1 секунду после покупки запрос
+           tickets_sold_total в Prometheus уже покажет увеличенное значение,
+           потому что приложение увеличило счётчик в момент покупки.      (5 баллов)
+        4. Запрос payments_processed_total в Prometheus вернёт три серии,
+           которые различаются меткой instance (IP-адрес и порт контейнера),
+           а запрос sum(payments_processed_total) without(instance) — одну
+           серию: сумму по трём контейнерам.                              (5 баллов)
+        5. Для job tickets-web в targets нужно было указать опубликованный
+           порт — tickets-web:8090, иначе Prometheus не получит метрики
+           сайта.                                                          (4 балла)
+    - id: D09-К-03
+      text: |
+        Фрагмент.
+        Компьютер с Linux и Docker. В файле /etc/docker/daemon.json хоста
+        включены метрики Docker Engine (после изменения Docker Engine
+        перезапущен):
+
+        {
+          "metrics-addr": "0.0.0.0:9323"
+        }
+
+        Образы уже есть на компьютере:
+        - kz/tickets-web:v1 — сайт продажи билетов (Flask и prometheus_client),
+          слушает порт 5000, его метрика tickets_sold_total — число проданных
+          билетов;
+        - kz/tickets-prometheus:v1 — Prometheus, настроен собирать метрики
+          сервиса tickets-web и Docker Engine этого компьютера (порт 9323);
+          веб-интерфейс — порт 9090.
+        Каталог /home/student/tickets-grafana содержит файлы Dockerfile,
+        datasource-prometheus.yaml, dashboard-provider.yaml,
+        tickets-dashboard.json (дашборд «Tickets», экспортированный из Grafana)
+        и docker-compose.yml. Файл dashboard-provider.yaml указывает Grafana
+        загружать дашборды из файлов каталога /var/lib/grafana/dashboards.
+
+        Файл Dockerfile:
+
+        FROM grafana/grafana:11.2.0
+
+        COPY datasource-prometheus.yaml ${GF_PATHS_PROVISIONING}/datasources/
+        COPY dashboard-provider.yaml ${GF_PATHS_PROVISIONING}/dashboards/
+        COPY tickets-dashboard.json /var/lib/grafana/dashboards/
+
+        Файл datasource-prometheus.yaml:
+
+        apiVersion: 1
+
+        datasources:
+          - name: Prometheus
+            type: prometheus
+            # запросы к Prometheus отправляет сервер Grafana из своего контейнера
+            access: proxy
+            url: http://prometheus:9090
+            isDefault: true
+
+        Файл docker-compose.yml:
+
+        services:
+          tickets-web:
+            image: kz/tickets-web:v1
+            ports:
+              - "8090:5000"
+
+          prometheus:
+            image: kz/tickets-prometheus:v1
+            ports:
+              - "9090:9090"
+
+          grafana:
+            image: kz/tickets-grafana:v1
+            ports:
+              - "3000:3000"
+            depends_on:
+              - prometheus
+
+        Контейнеров этого приложения на компьютере ещё нет. В терминале хоста
+        по порядку выполнены команды (все успешно):
+        > cd /home/student/tickets-grafana
+        > docker image build -t kz/tickets-grafana:v1 .
+        > docker compose up -d
+
+        Grafana открыта по адресу http://localhost:3000 (вход admin/admin).
+        Каждое утверждение рассматривайте отдельно, начиная с этого состояния.
+
+        Задание. Верно или неверно и почему?
+        1. Студент добавил новую панель (panel) в файл tickets-dashboard.json
+           в каталоге /home/student/tickets-grafana и выполнил
+           docker compose restart grafana. Grafana при запуске снова читает
+           файлы дашбордов, поэтому новая панель появится в дашборде «Tickets».
+                                                                          (5 баллов)
+        2. Источник данных (data source) Prometheus и дашборд «Tickets» уже
+           есть в Grafana сразу после запуска контейнера — настраивать их
+           вручную в веб-интерфейсе не нужно.                             (5 баллов)
+        3. В datasource-prometheus.yaml можно было указать
+           url: http://localhost:9090: порт 9090 Prometheus опубликован на
+           хосте, и в браузере Prometheus открывается по этому адресу.    (5 баллов)
+        4. Метрики engine_daemon_container_states_containers (число
+           контейнеров в каждом состоянии, с адреса :9323/metrics Docker
+           Engine), process_resident_memory_bytes (память процесса Python в
+           контейнере tickets-web) и tickets_sold_total относятся к трём
+           разным уровням наблюдаемости (observability): инфраструктура,
+           среда выполнения (runtime), приложение.                        (5 баллов)
+        5. В строке FROM указан конкретный тег 11.2.0, а не latest, чтобы
+           при каждой пересборке образа kz/tickets-grafana:v1 в его основе была
+           одна и та же версия Grafana.                                    (4 балла)
+  functional:
+    heading: ФУНКЦИОНАЛЬНЫЙ УРОВЕНЬ (32 балла)
+    points: 32
+    instructions: |
+      Инструкция студенту. Даны файлы, исходное состояние и последовательность
+      из 8 событий: запросы к приложению, команды Docker, наблюдения в
+      Prometheus или Grafana. События выполняются строго по порядку, в Linux.
+      t — время в секундах; в первом столбце указано, когда происходит событие
+      и в какой момент выполняется наблюдение. Первый столбец таблицы заполнен.
+      Заполните два других столбца для каждой строки:
+        - «Значение метрики» — что в этот момент отдаёт приложение по адресу
+          /metrics (значения метрик (metrics) из условия; если контейнеров
+          несколько — по каждому контейнеру); если приложение не работает —
+          так и напишите;
+        - «Что покажет Prometheus или Grafana» — результат наблюдения,
+          указанного в строке: серии (time series) с метками (labels) и
+          значениями, состояние целей (targets), значения панелей Grafana или
+          «пусто / No data», — и с какого опроса (scrape) взяты значения.
+      Нотация: значение в приложении — `tickets_sold_total 2`; серия в
+      Prometheus — `tickets_sold_total{instance="tickets:5000", job="concert"} 2`
+      (метки, которые не меняются от строки к строке, можно не повторять);
+      цель — `tickets:5000 UP` / `DOWN`. Числа можно писать как 2 или 2.0.
+      IP-адреса контейнеров неизвестны — пишите <IP>:5000.
+
+      Справка — правила Prometheus 3 / Grafana / клиента Python, которых нет в
+      главе 9 или которые в книге описаны кратко:
+        1. Prometheus сам приходит за метриками (pull): опрашивает /metrics
+           каждой цели раз в scrape_interval. В заданиях опросы идут в
+           t = 0, 10, 20, 30, … (все цели одновременно, опрос мгновенный);
+           события не совпадают с моментами опросов. Приложение ничего в
+           Prometheus не отправляет.
+        2. Запрос в интерфейсе Prometheus (страница Query — в книге она
+           называется Graph; вкладка Table) показывает для каждой серии
+           последнее значение, собранное опросом. Вкладка Graph рисует значения, собранные в
+           моменты опросов. Изменение, которое произошло и исчезло между двумя
+           опросами, в Prometheus не попадает.
+        3. Серия = имя метрики + набор меток. Prometheus добавляет метки
+           job (= job_name) и instance (адрес цели: для static_configs — как
+           записано в targets, например tickets:5000; для dns_sd_configs —
+           IP-адрес контейнера и порт). dns_sd_configs с type: A создаёт по
+           одной цели на каждый IP-адрес, который вернул DNS для имени, и
+           обновляет список каждые refresh_interval; новая цель впервые
+           опрашивается не позже чем через scrape_interval.
+        4. Клиент prometheus_client (Python) хранит значения в памяти процесса.
+           Counter — только inc(); Gauge — inc(), dec(), set(). У метрики с
+           метками строка со значением появляется в /metrics только после
+           первого вызова labels(...) с этими значениями меток, до этого есть
+           лишь строки # HELP и # TYPE. Служебные строки *_created,
+           python_*, process_* в заданиях не учитывайте.
+        5. Если цель не отвечает (контейнер не работает), опрос неудачен:
+           цель на странице Status -> Target health (в книге — Targets) имеет
+           состояние DOWN, а её серии пропадают из результатов запросов. В
+           заданиях наблюдения назначены так, что к ним серии уже пропали.
+        6. sum(выражение) without(метки) отбрасывает перечисленные метки и
+           складывает серии, у которых остальные метки совпадают. Фильтр
+           {code="500"} оставляет только серии с этим значением метки. Если
+           подходящих серий нет — результат пустой (Prometheus: Empty query
+           result; Grafana: No data).
+        7. Grafana приложения не опрашивает: каждая панель выполняет свой
+           PromQL-запрос к Prometheus. Панель Stat показывает последнее
+           значение, которое Prometheus собрал к моменту наблюдения (перед
+           наблюдением дашборд обновляется).
+        8. docker container kill останавливает контейнер сразу;
+           docker container start запускает тот же контейнер (тот же ID и
+           hostname), приложение отвечает через 1 с. Запросы к приложению
+           выполняются curl, каждый — после ответа на предыдущий, если не
+           сказано «параллельно».
+
+      Оценка: 8 строк по 4 балла (2 балла — значение метрики, 2 балла — что
+      покажет Prometheus или Grafana). Итого 32 балла. Ответ поясните устно.
+    questions:
+    - id: D09-Ф-01
+      text: |
+        Исходное состояние:
+        - каталог проекта называется concert, в нём файлы compose.yaml и
+          prometheus.yml (ниже); образ kz/tickets:v1 собран из app.py (Flask и
+          prometheus_client установлены в образе);
+        - выполнено docker compose up -d; работают контейнеры concert-tickets-1
+          и concert-prometheus-1;
+        - t = 0 — первый опрос Prometheus; запросов к приложению до этого не было.
+
+        Файл compose.yaml:
+        services:
+          tickets:
+            image: kz/tickets:v1
+            ports:
+              - "8020:5000"
+
+          prometheus:
+            image: prom/prometheus:v3.0.0
+            ports:
+              - "9090:9090"
+            volumes:
+              - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+        Файл prometheus.yml:
+        global:
+          scrape_interval: 10s
+
+        scrape_configs:
+          - job_name: "concert"
+            metrics_path: /metrics
+            static_configs:
+              - targets: ["tickets:5000"]
+
+        Файл app.py:
+        from flask import Flask
+        from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+        app = Flask(__name__)
+        left = 4  # свободных мест в зале
+
+        SOLD = Counter("tickets_sold_total", "Tickets sold")
+        LEFT = Gauge("tickets_left", "Free seats left")
+        LEFT.set(left)
+
+        @app.route("/buy")
+        def buy():
+            global left
+            if left == 0:
+                return "sold out", 409  # мест нет: метрики не меняются
+            left -= 1
+            SOLD.inc()
+            LEFT.set(left)
+            return "ticket ok"
+
+        @app.route("/refund")
+        def refund():
+            global left
+            left += 1  # билет вернули: место снова свободно
+            LEFT.set(left)
+            return "refund ok"
+
+        @app.route("/metrics")
+        def metrics():
+            return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+        app.run(host="0.0.0.0", port=5000)
+
+        Запросы /buy и /refund отправляются на http://localhost:8020.
+        QUERY — в интерфейсе Prometheus (http://localhost:9090, страница Query,
+        вкладка Table) выполнить два запроса: tickets_sold_total и tickets_left.
+
+        Задание: заполните таблицу.
+
+        | № | Событие и наблюдение                                        | Значение метрики | Что покажет Prometheus или Grafana |
+        |---|-------------------------------------------------------------|------------------|------------------------------------|
+        | 1 | t = 3:  /buy два раза                                       |                  |                                    |
+        |   | t = 5:  QUERY                                               |                  |                                    |
+        | 2 | t = 12: QUERY                                               |                  |                                    |
+        | 3 | t = 14: /buy три раза                                       |                  |                                    |
+        |   | t = 16: QUERY                                               |                  |                                    |
+        | 4 | t = 17: /refund один раз                                    |                  |                                    |
+        |   | t = 22: QUERY                                               |                  |                                    |
+        | 5 | t = 23: docker container kill concert-tickets-1             |                  |                                    |
+        |   | t = 24: QUERY                                               |                  |                                    |
+        | 6 | t = 25: docker container start concert-tickets-1            |                  |                                    |
+        |   | t = 27: /buy один раз                                       |                  |                                    |
+        |   | t = 28: QUERY                                               |                  |                                    |
+        | 7 | t = 32: QUERY; страница Status -> Target health             |                  |                                    |
+        | 8 | t = 35: запрос tickets_sold_total и tickets_left, вкладка   |                  |                                    |
+        |   |         Graph: какие значения на графике в моменты опросов  |                  |                                    |
+        |   |         t = 0, 10, 20, 30                                   |                  |                                    |
+
+        Баллы: 8 строк × 4 = 32.
+    - id: D09-Ф-02
+      text: |
+        Исходное состояние:
+        - каталог проекта называется shop, в нём файлы compose.yaml и
+          prometheus.yml (ниже); образ kz/checkout:v1 собран из checkout.py,
+          образ kz/shop:v1 — интернет-магазин: каждый заказ он отправляет
+          запросом POST http://checkout:5000/order (какой контейнер checkout
+          обработал заказ, указано в таблице);
+        - выполнено docker compose up -d --scale checkout=3; работают контейнеры
+          shop-shop-1, shop-checkout-1, shop-checkout-2, shop-checkout-3,
+          shop-prometheus-1. Hostname контейнеров checkout (на деле — короткие
+          ID) обозначим c1, c2, c3 (shop-checkout-1 -> c1 и т. д.);
+        - t = 0 — первый опрос Prometheus, все три контейнера checkout уже
+          найдены; заказов до этого не было.
+
+        Файл compose.yaml:
+        services:
+          shop:
+            image: kz/shop:v1
+            ports:
+              - "8030:8000"
+
+          checkout:
+            image: kz/checkout:v1
+
+          prometheus:
+            image: prom/prometheus:v3.0.0
+            ports:
+              - "9090:9090"
+            volumes:
+              - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+        Файл prometheus.yml:
+        global:
+          scrape_interval: 10s
+
+        scrape_configs:
+          - job_name: "checkout"
+            metrics_path: /metrics
+            dns_sd_configs:
+              - names:
+                  - checkout
+                type: A
+                port: 5000
+                refresh_interval: 5s
+
+        Файл checkout.py:
+        import socket
+        from flask import Flask
+        from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
+        app = Flask(__name__)
+        HOST = socket.gethostname()  # hostname контейнера
+        ORDERS = Counter("checkout_orders_total", "Orders processed", ["hostname"])
+        ORDERS.labels(hostname=HOST)  # серия со значением 0 появляется при старте
+
+        @app.route("/order", methods=["POST"])
+        def order():
+            ORDERS.labels(hostname=HOST).inc()
+            return "order accepted"
+
+        @app.route("/metrics")
+        def metrics():
+            return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+        app.run(host="0.0.0.0", port=5000)
+
+        Запросы в интерфейсе Prometheus (http://localhost:9090, страница Query,
+        вкладка Table):
+          ALL = checkout_orders_total
+          SUM = sum(checkout_orders_total) without(hostname, instance)
+
+        Задание: заполните таблицу. В столбце «Значение метрики» укажите значение
+        checkout_orders_total в каждом контейнере checkout.
+
+        | № | Событие и наблюдение                                        | Значение метрики | Что покажет Prometheus или Grafana |
+        |---|-------------------------------------------------------------|------------------|------------------------------------|
+        | 1 | t = 2:  страница Status -> Target health                    |                  |                                    |
+        | 2 | t = 4:  6 заказов: c1 — 3, c2 — 2, c3 — 1                   |                  |                                    |
+        |   | t = 6:  запрос ALL                                          |                  |                                    |
+        | 3 | t = 12: запрос ALL                                          |                  |                                    |
+        | 4 | t = 13: 4 заказа, все обработал c2                          |                  |                                    |
+        |   | t = 15: запрос SUM                                          |                  |                                    |
+        | 5 | t = 22: запрос SUM и запрос                                 |                  |                                    |
+        |   |         checkout_orders_total{hostname="c2"}                |                  |                                    |
+        | 6 | t = 24: docker container kill shop-checkout-3               |                  |                                    |
+        |   | t = 26: запрос SUM                                          |                  |                                    |
+        | 7 | t = 45: запросы ALL и SUM                                   |                  |                                    |
+        | 8 | t = 47: docker container start shop-checkout-3              |                  |                                    |
+        |   | t = 50: 2 заказа, оба обработал c3                          |                  |                                    |
+        |   | t = 75: запросы ALL и SUM                                   |                  |                                    |
+
+        Баллы: 8 строк × 4 = 32.
+    - id: D09-Ф-03
+      text: |
+        Исходное состояние:
+        - каталог проекта называется cinema; работают контейнеры трёх сервисов:
+          payments (образ kz/payments:v1 из app.py ниже, порт 8040:5000),
+          prometheus (опрашивает цель payments:5000 каждые 10 с, job_name:
+          "payments") и grafana (порт 3000:3000; собственный образ, как в
+          листинге 9.3: источник данных (data source) — Prometheus, дашборд
+          (dashboard) Payments с четырьмя панелями Stat, см. ниже);
+        - t = 0 — первый опрос Prometheus; запросов к /pay до этого не было.
+
+        Файл app.py:
+        import time
+        from flask import Flask, request
+        from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+        app = Flask(__name__)
+        REQUESTS = Counter("http_requests_total", "HTTP responses", ["code"])
+        IN_FLIGHT = Gauge("http_in_flight", "Requests in progress")
+
+        @app.route("/pay")
+        def pay():
+            IN_FLIGHT.inc()  # запрос начался
+            time.sleep(int(request.args.get("wait", "0")))  # долгий платёж, секунд
+            IN_FLIGHT.dec()  # запрос закончился
+            if request.args.get("card") == "bad":
+                REQUESTS.labels(code="500").inc()
+                return "payment failed", 500
+            REQUESTS.labels(code="200").inc()
+            return "paid"
+
+        @app.route("/metrics")
+        def metrics():
+            return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+        app.run(host="0.0.0.0", port=5000, threaded=True)  # запросы параллельно
+
+        Панели дашборда Payments (запрос PromQL каждой панели):
+          A «HTTP 200»   sum(http_requests_total{code="200"}) without(instance)
+          B «HTTP 500»   sum(http_requests_total{code="500"}) without(instance)
+          C «В работе»   sum(http_in_flight) without(instance)
+          D «Все ответы» sum(http_requests_total) without(instance, code)
+
+        Запросы отправляются на http://localhost:8040. DASH — открыть дашборд
+        Payments в Grafana и записать значения панелей A, B, C, D.
+
+        Задание: заполните таблицу. В столбце «Значение метрики» укажите все
+        строки http_requests_total и http_in_flight, которые отдаёт /metrics.
+
+        | № | Событие и наблюдение                                        | Значение метрики | Что покажет Prometheus или Grafana |
+        |---|-------------------------------------------------------------|------------------|------------------------------------|
+        | 1 | t = 3:  /pay три раза                                       |                  |                                    |
+        |   | t = 5:  DASH                                                |                  |                                    |
+        | 2 | t = 12: в Prometheus (страница Query, вкладка Table)        |                  |                                    |
+        |   |         запрос http_requests_total                          |                  |                                    |
+        | 3 | t = 14: параллельно два запроса /pay?wait=20                |                  |                                    |
+        |   |         (каждый закончится в t = 34)                        |                  |                                    |
+        |   | t = 16: DASH                                                |                  |                                    |
+        | 4 | t = 17: /pay?card=bad два раза                              |                  |                                    |
+        |   | t = 22: DASH                                                |                  |                                    |
+        | 5 | t = 25: /pay?wait=2&card=bad (закончится в t = 27)          |                  |                                    |
+        |   | t = 28: DASH                                                |                  |                                    |
+        | 6 | t = 32: в Prometheus запросы http_requests_total и          |                  |                                    |
+        |   |         http_in_flight                                      |                  |                                    |
+        | 7 | t = 34: оба запроса из строки 3 закончились                 |                  |                                    |
+        |   | t = 36: DASH                                                |                  |                                    |
+        | 8 | t = 42: DASH                                                |                  |                                    |
+
+        Баллы: 8 строк × 4 = 32.
+  systemic:
+    heading: СИСТЕМНЫЙ УРОВЕНЬ (44 балла)
+    points: 44
+    instructions: |
+      Глава 9. Сценарии проверки.
+
+      Инструкция. В каждом вопросе дан фрагмент — файлы приложения, файл
+      Docker Compose (compose.yaml), конфигурация Prometheus (prometheus.yml),
+      файлы Grafana — и описание исходного состояния: какие образы (images)
+      собраны, какие контейнеры есть. Придумайте 4 сценария проверки (как
+      тест-кейсы) и запишите их в таблицу:
+
+      | № | Исходное условие или действие | Ожидаемый результат | Что проверяет сценарий |
+      |---|-------------------------------|---------------------|------------------------|
+
+      - Исходное условие или действие — что именно вы делаете или задаёте:
+        какие команды docker / docker compose и в каком порядке выполняются,
+        сколько секунд вы ждёте между ними, что изменено перед ними (строка
+        prometheus.yml, файла Grafana или кода), какой сервис остановлен,
+        какие запросы и сколько раз отправлены приложению.
+      - Ожидаемый результат — что покажет Prometheus, Grafana или приложение:
+        цели (targets) задания и их статус UP / DOWN; сколько строк (серий) и
+        какие значения покажет запрос на странице запросов Prometheus в виде
+        таблицы (Table); что покажет панель Grafana (число, линия графика,
+        No data); что ответило приложение (например, ticket 3, ошибка 500).
+      - Что проверяет сценарий — какое правило Docker / Prometheus / Grafana
+        или какое утверждение из задания подтверждается или опровергается.
+      Сценарии должны давать разные исходы. ID контейнеров, IP-адреса,
+      точное время и точный текст сообщений не нужны: пишите <id1>, <IP1>,
+      время указывайте приблизительно («примерно через 15 с»), результат
+      описывайте словами (например: «у задания одна цель, статус DOWN», «две
+      строки, значения 4 и 6», «панель No data»).
+
+      Справка (правила, которые нужны для ответа):
+      - Prometheus собирает метрики сам (pull): каждые scrape_interval он
+        отправляет запрос GET <metrics_path> каждой цели (target) и сохраняет
+        полученные значения с отметкой времени. Между опросами Prometheus и
+        Grafana показывают значения последнего опроса. Первый опрос — в
+        течение одного scrape_interval после запуска Prometheus.
+      - Цель записывается как <хост>:<порт>. Хост ищется через DNS сети, в
+        которой работает контейнер Prometheus. Внутри контейнера localhost —
+        это сам этот контейнер. Контейнеры одного проекта Compose находят друг
+        друга по имени сервиса; порт — порт контейнера, а не опубликованный
+        порт хоста.
+      - static_configs: каждая строка в targets — одна цель. Если имени
+        соответствуют несколько контейнеров, при каждом опросе Prometheus
+        обращается только к одному из них (по книге — к первому адресу из
+        ответа DNS).
+      - dns_sd_configs с type: A: Prometheus запрашивает у DNS все адреса
+        имени (повторно — каждые 30 с) и делает отдельную цель для каждого
+        адреса.
+      - К каждой серии Prometheus добавляет метки (labels) job (имя задания) и
+        instance (адрес цели: как записано в targets, а для dns_sd_configs —
+        <IP>:<порт>).
+      - Status → Targets (в Prometheus 3 — Status → Target health): список
+        целей со статусом UP (последний опрос успешен) или DOWN (опрос не
+        удался, например connection refused). Если опрос цели не удался или
+        серия пропала из ответа цели, серия сразу исчезает из таблицы на
+        странице запросов, а линия на графике обрывается.
+      - Счётчик (counter) только растёт; датчик (gauge) может расти и
+        уменьшаться (inc, dec, set). Значения метрик хранятся в памяти
+        процесса приложения: новый процесс (перезапуск контейнера, новый
+        контейнер) начинает с начальных значений из кода (для счётчика — 0).
+      - Python-клиент prometheus_client: Counter("x_total", ...) выводится в
+        /metrics как x_total (служебные строки x_created в заданиях не
+        показаны и не нужны); Gauge("y", ...) — как y. У Counter нет метода
+        dec(), а inc() с отрицательным числом вызывает исключение ValueError
+        (Flask отвечает 500 Internal Server Error).
+      - PromQL: sum(m) without(a, b) складывает серии метрики m, отбрасывая
+        метки a и b; серии, которые различаются другими метками, остаются
+        отдельными строками.
+      - Prometheus читает свой файл конфигурации при запуске контейнера.
+        Grafana читает файлы provisioning (источник данных (data source),
+        провайдер дашбордов, JSON дашбордов) при запуске контейнера.
+      - docker compose up -d пересоздаёт контейнер сервиса, только если
+        изменилось описание сервиса в compose.yaml или образ с тем же тегом
+        пересобран; остальные контейнеры продолжают работать как есть.
+        Изменение содержимого смонтированного файла контейнер не пересоздаёт.
+      - Имя хоста (hostname) в контейнере — ID контейнера. Контейнеры проекта
+        называются <проект>-<сервис>-<номер>; проект — имя каталога с
+        compose.yaml.
+      - Приложения во фрагментах останавливаются командой stop около 10 с.
+
+      Оценка: 4 сценария по 8 баллов (исходное условие — 2, ожидаемый результат — 3,
+      что проверяет — 3) = 32 балла + защита сценариев у экзаменатора — 12 баллов.
+      Итого 44 балла.
+    questions:
+    - id: D09-С-01
+      text: |
+        Фрагмент. Касса концертов: магазин shop принимает заказы и передаёт их
+        сервису продажи билетов tickets, который нужно масштабировать.
+        Prometheus собирает метрики обоих сервисов.
+
+        Каталог /home/student/boxoffice (текущий):
+            compose.yaml
+            shop/        Dockerfile, app.py
+            tickets/     Dockerfile, app.py
+            prometheus/  Dockerfile, prometheus.yml
+
+        Файл tickets/Dockerfile (shop/Dockerfile такой же):
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN pip install flask prometheus_client
+            COPY app.py .
+            CMD ["python", "app.py"]
+
+        Файл tickets/app.py:
+            import socket
+            from flask import Flask, Response
+            from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
+            HOST = socket.gethostname()  # в контейнере — ID контейнера
+            sold = Counter("tickets_sold_total", "Tickets sold", ["hostname"])
+            app = Flask(__name__)
+
+            @app.post("/buy")
+            def buy():
+                sold.labels(hostname=HOST).inc()
+                return "sold by " + HOST
+
+            @app.get("/metrics")
+            def metrics():
+                return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+            app.run(host="0.0.0.0", port=5000)
+
+        Файл shop/app.py:
+            import os
+            import urllib.request
+            from flask import Flask, Response
+            from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
+            TICKETS_URL = os.environ["TICKETS_URL"]
+            orders = Counter("shop_orders_total", "Orders accepted by the shop")
+            app = Flask(__name__)
+
+            @app.get("/buy")
+            def buy():
+                orders.inc()  # заказ принят — считаем до вызова tickets
+                reply = urllib.request.urlopen(TICKETS_URL + "/buy", data=b"", timeout=3)
+                return reply.read()
+
+            @app.get("/metrics")
+            def metrics():
+                return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+            app.run(host="0.0.0.0", port=8000)
+
+        Файл prometheus/Dockerfile:
+            FROM prom/prometheus:v3.1.0
+            COPY prometheus.yml /etc/prometheus/prometheus.yml
+
+        Файл prometheus/prometheus.yml:
+            global:
+              scrape_interval: 10s
+
+            scrape_configs:
+              - job_name: "shop"
+                metrics_path: /metrics
+                static_configs:
+                  - targets: ["shop:8000"]
+
+              - job_name: "tickets"
+                metrics_path: /metrics
+                static_configs:
+                  - targets: ["tickets:5000"]
+
+        Файл compose.yaml:
+            services:
+
+              shop:
+                image: boxoffice-shop:1
+                ports:
+                  - "8090:8000"
+                environment:
+                  - TICKETS_URL=http://tickets:5000
+
+              tickets:
+                image: boxoffice-tickets:1
+
+              prometheus:
+                image: boxoffice-prometheus:1
+                ports:
+                  - "9090:9090"
+
+        Образы собраны в каталоге boxoffice командами:
+            docker image build -t boxoffice-shop:1 shop
+            docker image build -t boxoffice-tickets:1 tickets
+            docker image build -t boxoffice-prometheus:1 prometheus
+        Контейнеров проекта boxoffice нет. Когда сервис tickets запущен в
+        нескольких контейнерах, Docker распределяет вызовы shop → tickets
+        между ними примерно поровну (точное распределение не важно).
+
+        Разработчик утверждает: «Конфигурация готова к масштабированию. После
+        docker compose up -d --scale tickets=3 Prometheus собирает метрики всех
+        трёх контейнеров tickets: в Status → Targets у задания tickets три цели,
+        а запрос sum(tickets_sold_total) without(hostname, instance) всегда
+        равен shop_orders_total — каждый принятый заказ виден в продажах».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно выполнять docker compose up -d (в том числе с
+        --scale tickets=N), docker compose stop / start / down, docker container
+        stop <контейнер>, ждать между командами, отправлять запросы
+        http://localhost:8090/buy (N раз подряд), открывать Prometheus
+        http://localhost:9090 (Status → Targets; запросы tickets_sold_total,
+        shop_orders_total, sum(...) without(...) в виде таблицы), менять
+        prometheus/prometheus.yml и пересобирать образ boxoffice-prometheus:1.
+        Для каждого сценария укажите исходное условие, ожидаемый результат
+        (цели задания tickets и их статус, сколько строк и какие значения
+        покажут запросы, ответы http://localhost:8090/buy) и что проверяет
+        сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D09-С-02
+      text: |
+        Фрагмент. Мониторинг приложения списка задач (to-do): приложение,
+        Prometheus и Grafana с готовым дашбордом в одном файле Compose (по
+        мотивам лабораторной работы главы).
+
+        Каталог /home/student/todo (текущий):
+            compose.yaml
+            prometheus/  prometheus.yml
+            grafana/     Dockerfile, datasource-prometheus.yaml,
+                         dashboard-provider.yaml, dashboard.json
+
+        Образ приложения todo-app:1 уже собран (Python, Flask, prometheus_client).
+        Приложение слушает порт 5000. Запрос /add создаёт задачу, /metrics
+        отдаёт метрики. Запросы к /metrics приложение не считает. Ответ
+        /metrics после двух запросов /add (служебные строки не показаны):
+            # HELP todo_tasks_created_total Tasks created
+            # TYPE todo_tasks_created_total counter
+            todo_tasks_created_total 2.0
+            # HELP todo_http_requests_total HTTP requests processed
+            # TYPE todo_http_requests_total counter
+            todo_http_requests_total{code="200"} 2.0
+            # HELP todo_http_requests_in_progress HTTP requests being processed now
+            # TYPE todo_http_requests_in_progress gauge
+            todo_http_requests_in_progress 0.0
+
+        Файл compose.yaml:
+            services:
+
+              todo-web:
+                image: todo-app:1
+                ports:
+                  - "8020:5000"
+
+              prometheus:
+                image: prom/prometheus:v3.1.0
+                ports:
+                  - "9091:9090"
+                volumes:
+                  - ./prometheus:/etc/prometheus
+
+              grafana:
+                image: todo-grafana:1
+                ports:
+                  - "3001:3000"
+                depends_on:
+                  - prometheus
+
+        Файл prometheus/prometheus.yml (образ prom/prometheus читает
+        /etc/prometheus/prometheus.yml):
+            global:
+              scrape_interval: 15s
+
+            scrape_configs:
+              - job_name: "todo"
+                metrics_path: /metrics
+                static_configs:
+                  - targets: ["localhost:5000"]
+
+        Файл grafana/Dockerfile:
+            FROM grafana/grafana:11.3.0
+
+            COPY datasource-prometheus.yaml ${GF_PATHS_PROVISIONING}/datasources/
+            COPY dashboard-provider.yaml ${GF_PATHS_PROVISIONING}/dashboards/
+            COPY dashboard.json /etc/grafana/dashboards/
+
+        Файл grafana/datasource-prometheus.yaml:
+            apiVersion: 1
+
+            datasources:
+              - name: Prometheus
+                type: prometheus
+                access: proxy
+                url: http://prometheus:9090
+                isDefault: true
+
+        Файл grafana/dashboard-provider.yaml:
+            apiVersion: 1
+
+            providers:
+              - name: todo
+                type: file
+                options:
+                  path: /etc/grafana/dashboards
+
+        Файл grafana/dashboard.json (содержимое не показано) описывает дашборд
+        Todo из трёх панелей-графиков за последние 15 минут:
+            Tasks created   sum(todo_tasks_created_total) without(instance)
+            HTTP requests   sum(todo_http_requests_total) without(instance, code)
+            In progress     sum(todo_http_requests_in_progress) without(instance)
+
+        Образ Grafana собран в каталоге todo командой
+        docker image build -t todo-grafana:1 grafana (в базовом образе
+        GF_PATHS_PROVISIONING=/etc/grafana/provisioning). Вход в Grafana —
+        admin / admin. Контейнеров проекта todo нет.
+
+        Разработчик утверждает: «docker compose up -d поднимает готовый
+        мониторинг: Prometheus сразу собирает метрики todo-web, Grafana
+        открывается с дашбордом Todo, где видно, сколько задач создано. Чтобы
+        поменять конфигурацию Prometheus или дашборд, достаточно поправить файл
+        в каталоге проекта и снова выполнить docker compose up -d».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно выполнять docker compose up -d / stop / start /
+        restart <сервис> / down, ждать между командами, отправлять запросы
+        http://localhost:8020/add и http://localhost:8020/metrics, открывать
+        Prometheus http://localhost:9091 (Status → Targets, запросы) и Grafana
+        http://localhost:3001 (дашборд Todo), менять файлы в каталогах
+        prometheus и grafana, пересобирать образ todo-grafana:1. Для каждого
+        сценария укажите исходное условие, ожидаемый результат (цель задания
+        todo и её статус, что показывают панели дашборда Todo, ответы
+        приложения) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.
+    - id: D09-С-03
+      text: |
+        Фрагмент. Продажа билетов на камерный концерт (5 мест): метрики
+        приложения и дашборд для отдела продаж.
+
+        Каталог /home/student/concert (текущий): compose.yaml, Dockerfile,
+        app.py, prometheus/ (Dockerfile, prometheus.yml), grafana/ (Dockerfile и
+        файлы provisioning).
+
+        Файл Dockerfile:
+            FROM python:3.12-slim
+            WORKDIR /app
+            RUN pip install flask prometheus_client
+            COPY app.py .
+            CMD ["python", "app.py"]
+
+        Файл app.py:
+            from flask import Flask, Response
+            from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
+
+            SEATS = 5  # мест в зале
+            sold = 0   # продано билетов
+
+            tickets_sold = Counter("tickets_sold_total", "Tickets sold")
+            seats_free = Gauge("seats_free", "Free seats")
+            sessions = Counter("active_sessions_total", "Users choosing seats now")
+            seats_free.set(SEATS)
+
+            app = Flask(__name__)
+
+            @app.get("/enter")  # пользователь открыл схему зала
+            def enter():
+                sessions.inc()
+                return "welcome"
+
+            @app.get("/leave")  # пользователь закрыл схему зала
+            def leave():
+                sessions.inc(-1)
+                return "bye"
+
+            @app.get("/buy")
+            def buy():
+                global sold
+                if sold >= SEATS:
+                    return "sold out", 409
+                sold += 1
+                tickets_sold.inc()
+                seats_free.set(SEATS - sold)
+                return "ticket " + str(sold)
+
+            @app.get("/metrics")
+            def metrics():
+                return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+            app.run(host="0.0.0.0", port=5000)
+
+        Файл prometheus/prometheus.yml (скопирован в образ concert-prometheus:1):
+            global:
+              scrape_interval: 10s
+
+            scrape_configs:
+              - job_name: "concert"
+                metrics_path: /metrics
+                static_configs:
+                  - targets: ["tickets:5000"]
+
+        Файл compose.yaml:
+            services:
+
+              tickets:
+                image: concert-tickets:1
+                ports:
+                  - "8030:5000"
+
+              prometheus:
+                image: concert-prometheus:1
+                ports:
+                  - "9092:9090"
+
+              grafana:
+                image: concert-grafana:1
+                ports:
+                  - "3002:3000"
+
+        Образ concert-grafana:1 содержит источник данных http://prometheus:9090
+        и дашборд Concert из трёх панелей-графиков за последние 15 минут:
+            Tickets sold         sum(tickets_sold_total) without(instance)
+            Free seats           sum(seats_free) without(instance)
+            Choosing seats now   sum(active_sessions_total) without(instance)
+
+        Все образы собраны (concert-tickets:1 — из Dockerfile выше).
+        Контейнеров проекта concert нет.
+
+        Разработчик утверждает: «Дашборд Concert готов для отдела продаж:
+        Tickets sold показывает, сколько билетов продано с начала продаж, Free
+        seats — сколько мест осталось, Choosing seats now — сколько
+        пользователей прямо сейчас выбирают места. Значения на дашборде
+        меняются сразу после каждого запроса».
+
+        Задание. Придумайте 4 сценария, которые проверяют утверждение
+        разработчика. Можно выполнять docker compose up -d / stop / start /
+        restart <сервис> / down, ждать между командами, отправлять запросы
+        http://localhost:8030/enter, /leave, /buy и /metrics (N раз подряд),
+        смотреть дашборд Concert в Grafana (http://localhost:3002) и запросы
+        в Prometheus (http://localhost:9092), менять app.py и пересобирать
+        образ concert-tickets:1. Для каждого сценария укажите исходное условие,
+        ожидаемый результат (ответы приложения, значения панелей дашборда в
+        указанные моменты времени) и что проверяет сценарий.
+
+        Баллы: 4 сценария × 8 = 32; защита — 12. Всего 44.

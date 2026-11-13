@@ -1,0 +1,57 @@
+[project]
+name = "exam-tickets"
+version = "0.1.0"
+description = "Генератор экзаменационных билетов СРО-2 / СРО-3"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "streamlit~=1.67",
+    "pydantic>=2",
+    "pyyaml",
+]
+
+[tool.poetry]
+packages = [{ include = "exam_tickets", from = "src" }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pytest-cov = "*"
+mypy = "*"
+ruff = "*"
+isort = "*"
+types-PyYAML = "*"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+explicit_package_bases = true
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
+
+[tool.ruff]
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "D", "SIM", "S", "PL", "RUF"]
+# Язык проекта русский/казахский: confusables срабатывают почти на любую кириллицу
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# D103: имена тестов описательные (CLAUDE.md), докстринг дублировал бы имя
+"tests/**" = ["S101", "PLR2004", "D103"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.format]
+# ruff 0.17 форматирует кодовые блоки в .md — документы правим только вручную
+exclude = ["*.md"]

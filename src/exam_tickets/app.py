@@ -16,6 +16,7 @@ import streamlit as st
 
 from exam_tickets.dataset import Dataset
 from exam_tickets.exceptions import DataError
+from exam_tickets.grading import GRADE_SCALE, accepted_total, scale_points
 from exam_tickets.i18n import t
 from exam_tickets.models import Lang, Stage
 from exam_tickets.render import format_chapter_ref, render_text
@@ -137,6 +138,11 @@ def _on_generate() -> None:
     state["ticket"] = generate_ticket(
         pool=pool, previous=state["ticket"], rng=state["rng"]
     )
+    # Оценки прошлого задания к новым вопросам не относятся: удаляем ключи,
+    # и _init_grading заново выставит значения по умолчанию.
+    for position in range(len(state["ticket"].items)):
+        state.pop(_accepted_key(position), None)
+        state.pop(_score_key(position), None)
 
 
 def _init_state() -> None:
@@ -248,6 +254,99 @@ def _render_button(dataset: Dataset) -> None:
         st.caption(t("hint_select", lang))
 
 
+def _accepted_key(position: int) -> str:
+    """Ключ галочки «принято» для вопроса задания.
+
+    Args:
+        position: Номер вопроса в задании, с нуля.
+
+    Returns:
+        Ключ виджета в ``st.session_state``.
+    """
+    return f"accepted_{position}"
+
+
+def _score_key(position: int) -> str:
+    """Ключ поля балла для вопроса задания.
+
+    Args:
+        position: Номер вопроса в задании, с нуля.
+
+    Returns:
+        Ключ виджета в ``st.session_state``.
+    """
+    return f"score_{position}"
+
+
+def _init_grading(ticket: Ticket) -> None:
+    """Задаёт значения оценки по умолчанию: «не принято» и максимум уровня.
+
+    Значения пишутся в состояние до отрисовки виджетов, а не через ``value=``:
+    иначе Streamlit предупредит о двух источниках значения (как и в
+    ``_init_state``).
+
+    Args:
+        ticket: Текущее задание.
+    """
+    for position, item in enumerate(ticket.items):
+        maximum = item.chapter.levels[item.level].points
+        st.session_state.setdefault(_accepted_key(position), False)
+        st.session_state.setdefault(_score_key(position), maximum)
+
+
+def _render_total(ticket: Ticket) -> None:
+    """Рисует сумму баллов принятых ответов и её пересчёт в шкалу СРО.
+
+    Args:
+        ticket: Текущее задание.
+    """
+    state = st.session_state
+    scores = [
+        (bool(state[_accepted_key(position)]), int(state[_score_key(position)]))
+        for position in range(len(ticket.items))
+    ]
+    total = accepted_total(scores=scores)
+    maximum = sum(item.chapter.levels[item.level].points for item in ticket.items)
+    scaled = scale_points(points=total, maximum=maximum)
+    st.markdown(
+        "**"
+        + t(
+            "score_total",
+            _ui_lang(),
+            total=str(total),
+            maximum=str(maximum),
+            scaled=str(scaled),
+            scale=str(GRADE_SCALE),
+        )
+        + "**"
+    )
+
+
+def _render_grading(item: PoolItem, position: int) -> None:
+    """Рисует под вопросом галочку «принято» и поле балла.
+
+    Поле ограничено диапазоном 0…максимум уровня, чтобы опечатка вроде 240
+    вместо 24 не исказила сумму.
+
+    Args:
+        item: Вопрос задания.
+        position: Номер вопроса в задании, с нуля.
+    """
+    lang = _ui_lang()
+    maximum = item.chapter.levels[item.level].points
+    left, right = st.columns(2, vertical_alignment="bottom")
+    with left:
+        st.checkbox(t("accepted", lang), key=_accepted_key(position))
+    with right:
+        st.number_input(
+            f"{t('score', lang)} (0–{maximum})",
+            min_value=0,
+            max_value=maximum,
+            step=1,
+            key=_score_key(position),
+        )
+
+
 def _render_item(item: PoolItem) -> None:
     """Рисует один вопрос билета (§5.4).
 
@@ -277,10 +376,15 @@ def _render_ticket(ticket: Ticket) -> None:
     Args:
         ticket: Текущий билет.
     """
+    _init_grading(ticket=ticket)
+    _render_total(ticket=ticket)
     for position, item in enumerate(ticket.items):
         if position:
             st.divider()
         _render_item(item)
+        _render_grading(item=item, position=position)
+    st.divider()
+    _render_total(ticket=ticket)
 
 
 def main() -> None:

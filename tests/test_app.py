@@ -260,3 +260,54 @@ def test_special_characters_are_escaped_end_to_end(
     page = "\n".join(bodies(at))
     assert "$x &lt;tag&gt; # Вопрос" in page
     assert "<tag>" not in page
+
+
+# --- оценивание -------------------------------------------------------------
+
+
+def totals(at: AppTest) -> list[str]:
+    """Строки с суммой баллов на странице."""
+    return [m.value for m in at.markdown if "Баллы:" in m.value]
+
+
+def test_grading_defaults_are_not_accepted_and_max_points() -> None:
+    at = generate(pick(new_app()))
+    assert [c.value for c in at.checkbox] == [False, False, False]
+    assert [n.value for n in at.number_input] == [24, 32, 44]
+
+
+def test_total_is_shown_above_and_below_ticket() -> None:
+    at = generate(pick(new_app()))
+    assert totals(at) == ["**Баллы: 0 / 100 (0.0 / 26)**"] * 2
+
+
+def test_total_counts_only_accepted_answers() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="accepted_0").check().run()
+    at.number_input(key="score_2").set_value(30).run()
+    at.checkbox(key="accepted_2").check().run()
+    # 24 + 30 = 54 → 54 × 26 / 100 = 14.04 → 14.0
+    assert totals(at)[0] == "**Баллы: 54 / 100 (14.0 / 26)**"
+
+
+def test_score_is_limited_by_level_maximum() -> None:
+    at = generate(pick(new_app()))
+    assert at.number_input(key="score_0").proto.max == 24
+
+
+def test_new_ticket_resets_grading() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="accepted_0").check().run()
+    at.number_input(key="score_0").set_value(10).run()
+    at = generate(at)
+    assert (
+        at.checkbox(key="accepted_0").value,
+        at.number_input(key="score_0").value,
+    ) == (False, 24)
+
+
+def test_grading_survives_ui_language_change() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="accepted_1").check().run()
+    at.radio(key="ui_lang").set_value("Қазақша").run()
+    assert at.checkbox(key="accepted_1").value

@@ -42,6 +42,12 @@ STRINGS: dict[str, dict[Lang, str]] = {
         Lang.RU: "Для выбранной комбинации нет вопросов уровней: {levels}.",
         Lang.KK: "Таңдалған үйлесімде мына деңгейлерде сұрақ жоқ: {levels}.",
     },
+    "accepted": {Lang.RU: "Принято", Lang.KK: "Қабылданды"},
+    "score": {Lang.RU: "Балл", Lang.KK: "Ұпай"},
+    "score_total": {
+        Lang.RU: "Баллы: {total} / {maximum} ({scaled} / {scale})",
+        Lang.KK: "Ұпай: {total} / {maximum} ({scaled} / {scale})",
+    },
     "data_error": {
         Lang.RU: "Не удалось загрузить вопросы. Подробности записаны в журнал.",
         Lang.KK: "Сұрақтарды жүктеу мүмкін болмады. Толық ақпарат журналға жазылды.",

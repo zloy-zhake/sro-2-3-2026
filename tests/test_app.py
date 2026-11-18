@@ -66,7 +66,7 @@ def test_nothing_is_selected_on_open() -> None:
     at = new_app()
     assert at.selectbox(key="subject").value is None
     assert at.radio(key="stage").value is None
-    assert at.radio(key="ui_lang").value == Lang.RU
+    assert at.radio(key="ui_lang").value == Lang.KK
 
 
 def test_question_language_is_disabled_and_empty_before_subject() -> None:
@@ -207,7 +207,7 @@ def test_data_error_shows_message_instead_of_traceback(
     at = new_app()
     assert not at.exception
     assert [e.value for e in at.error] == [
-        "Не удалось загрузить вопросы. Подробности записаны в журнал."
+        "Сұрақтарды жүктеу мүмкін болмады. Толық ақпарат журналға жазылды."
     ]
 
 

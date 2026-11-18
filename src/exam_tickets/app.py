@@ -33,7 +33,9 @@ logger = logging.getLogger(name=__name__)
 DATA_ROOT: Traversable = files("exam_tickets").joinpath("data")
 
 _STAGES: tuple[Stage, ...] = (Stage.SRO2, Stage.SRO3)
-_UI_LANGUAGES: tuple[Lang, ...] = (Lang.RU, Lang.KK)
+# Казахский идёт первым: он язык интерфейса по умолчанию.
+_UI_LANGUAGES: tuple[Lang, ...] = (Lang.KK, Lang.RU)
+_DEFAULT_UI_LANG: Lang = Lang.KK
 
 
 @st.cache_resource
@@ -59,7 +61,7 @@ def load_dataset() -> Dataset:
 
 def _ui_lang() -> Lang:
     """Возвращает язык интерфейса, безопасный до инициализации состояния."""
-    return Lang(st.session_state.get("ui_lang", Lang.RU))
+    return Lang(st.session_state.get("ui_lang", _DEFAULT_UI_LANG))
 
 
 def _resync_stage_widget() -> None:
@@ -147,7 +149,7 @@ def _init_state() -> None:
         "subject": None,
         "qlang": None,
         "stage": None,
-        "ui_lang": Lang.RU,
+        "ui_lang": _DEFAULT_UI_LANG,
         "ui_lang_manual": False,
         "ticket": None,
         # Не криптография, поэтому обычный Random.

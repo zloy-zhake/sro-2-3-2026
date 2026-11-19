@@ -270,10 +270,57 @@ def totals(at: AppTest) -> list[str]:
     return [m.value for m in at.markdown if "Баллы:" in m.value]
 
 
-def test_grading_defaults_are_not_accepted_and_max_points() -> None:
+def test_grading_defaults_are_not_accepted_and_zero_points() -> None:
     at = generate(pick(new_app()))
-    assert [c.value for c in at.checkbox] == [False, False, False]
-    assert [n.value for n in at.number_input] == [24, 32, 44]
+    assert [at.checkbox(key=f"accepted_{i}").value for i in range(3)] == [False] * 3
+    assert [at.number_input(key=f"score_{i}").value for i in range(3)] == [0, 0, 0]
+
+
+def test_subitems_default_to_unchecked_with_max_points() -> None:
+    at = generate(pick(new_app()))
+    checked = [at.checkbox(key=f"sub_0_{i}_checked").value for i in range(5)]
+    points = [at.number_input(key=f"sub_0_{i}_points").value for i in range(5)]
+    assert (checked, points) == ([False] * 5, [5, 5, 5, 5, 4])
+
+
+def test_question_has_subitems_by_level_scheme() -> None:
+    at = generate(pick(new_app()))
+    keys = {c.key for c in at.checkbox if c.key and c.key.startswith("sub_")}
+    counts = [sum(k.startswith(f"sub_{p}_") for k in keys) for p in range(3)]
+    assert counts == [5, 8, 5]
+
+
+def test_checking_subitems_sets_question_score_to_their_sum() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="sub_0_0_checked").check().run()
+    at.checkbox(key="sub_0_4_checked").check().run()
+    assert at.number_input(key="score_0").value == 9
+
+
+def test_editing_subitem_points_updates_question_score() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="sub_0_0_checked").check().run()
+    at.number_input(key="sub_0_0_points").set_value(3).run()
+    assert at.number_input(key="score_0").value == 3
+
+
+def test_unchecked_subitem_points_are_not_counted() -> None:
+    at = generate(pick(new_app()))
+    at.number_input(key="sub_0_1_points").set_value(2).run()
+    assert at.number_input(key="score_0").value == 0
+
+
+def test_manual_question_score_survives_until_subitem_changes() -> None:
+    at = generate(pick(new_app()))
+    at.number_input(key="score_0").set_value(20).run()
+    assert at.number_input(key="score_0").value == 20
+    at.checkbox(key="sub_0_0_checked").check().run()
+    assert at.number_input(key="score_0").value == 5
+
+
+def test_systemic_last_subitem_is_defense() -> None:
+    at = generate(pick(new_app()))
+    assert at.checkbox(key="sub_2_4_checked").label == "Защита — макс. 12"
 
 
 def test_total_is_shown_above_and_below_ticket() -> None:
@@ -283,10 +330,12 @@ def test_total_is_shown_above_and_below_ticket() -> None:
 
 def test_total_counts_only_accepted_answers() -> None:
     at = generate(pick(new_app()))
+    at.number_input(key="score_0").set_value(24).run()
     at.checkbox(key="accepted_0").check().run()
+    at.number_input(key="score_1").set_value(32).run()
     at.number_input(key="score_2").set_value(30).run()
     at.checkbox(key="accepted_2").check().run()
-    # 24 + 30 = 54 → 54 × 26 / 100 = 14.04 → 14.0
+    # 24 + 30 = 54 (32 не принято) → 54 × 26 / 100 = 14.04 → 14.0
     assert totals(at)[0] == "**Баллы: 54 / 100 (14.0 / 26)**"
 
 
@@ -298,12 +347,16 @@ def test_score_is_limited_by_level_maximum() -> None:
 def test_new_ticket_resets_grading() -> None:
     at = generate(pick(new_app()))
     at.checkbox(key="accepted_0").check().run()
-    at.number_input(key="score_0").set_value(10).run()
+    at.checkbox(key="sub_0_0_checked").check().run()
+    at.number_input(key="sub_0_1_points").set_value(1).run()
     at = generate(at)
-    assert (
+    state = (
         at.checkbox(key="accepted_0").value,
         at.number_input(key="score_0").value,
-    ) == (False, 24)
+        at.checkbox(key="sub_0_0_checked").value,
+        at.number_input(key="sub_0_1_points").value,
+    )
+    assert state == (False, 0, False, 5)
 
 
 def test_grading_survives_ui_language_change() -> None:

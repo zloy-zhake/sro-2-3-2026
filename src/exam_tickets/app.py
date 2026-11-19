@@ -20,7 +20,7 @@ from exam_tickets.grading import (
     DEFENSE_LEVEL,
     GRADE_SCALE,
     SUBITEM_POINTS,
-    accepted_total,
+    checked_total,
     scale_points,
 )
 from exam_tickets.i18n import t
@@ -335,7 +335,7 @@ def _on_subitem(position: int, count: int) -> None:
         )
         for index in range(count)
     ]
-    state[_score_key(position)] = accepted_total(scores=scores)
+    state[_score_key(position)] = checked_total(scores=scores)
 
 
 def _on_accepted(position: int, level: LevelKey) -> None:
@@ -383,17 +383,19 @@ def _init_grading(ticket: Ticket) -> None:
 
 
 def _render_total(ticket: Ticket) -> None:
-    """Рисует сумму баллов принятых ответов и её пересчёт в шкалу СРО.
+    """Рисует сумму баллов всех вопросов и её пересчёт в шкалу СРО.
+
+    Галочка «принято» в сумме не участвует: она лишь быстро заполняет или
+    снимает подпункты, а балл вопроса уже отражает их состояние. Иначе
+    отмеченные подпункты непринятого вопроса не меняли бы сумму.
 
     Args:
         ticket: Текущее задание.
     """
     state = st.session_state
-    scores = [
-        (bool(state[_accepted_key(position)]), int(state[_score_key(position)]))
-        for position in range(len(ticket.items))
-    ]
-    total = accepted_total(scores=scores)
+    total = sum(
+        int(state[_score_key(position)]) for position in range(len(ticket.items))
+    )
     maximum = sum(item.chapter.levels[item.level].points for item in ticket.items)
     scaled = scale_points(points=total, maximum=maximum)
     st.markdown(

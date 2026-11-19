@@ -28,20 +28,20 @@ SUBITEM_POINTS: dict[LevelKey, tuple[int, ...]] = {
 DEFENSE_LEVEL = LevelKey.SYSTEMIC
 
 
-def accepted_total(scores: list[tuple[bool, int]]) -> int:
-    """Суммирует баллы только принятых ответов.
+def checked_total(scores: list[tuple[bool, int]]) -> int:
+    """Суммирует баллы только отмеченных подпунктов.
 
-    Непринятый ответ не даёт баллов, даже если в поле стоит число: по
-    умолчанию поле заполнено максимумом уровня, и без галочки этот максимум
-    не должен попадать в сумму.
+    Неотмеченный подпункт не даёт баллов, даже если в его поле стоит число:
+    по умолчанию поле заполнено максимумом подпункта, и без галочки этот
+    максимум не должен попадать в балл вопроса.
 
     Args:
-        scores: Пары «принят ли ответ, выставленный балл» по вопросам.
+        scores: Пары «отмечен ли подпункт, его балл».
 
     Returns:
-        Сумма баллов принятых ответов.
+        Сумма баллов отмеченных подпунктов.
     """
-    return sum(points for accepted, points in scores if accepted)
+    return sum(points for checked, points in scores if checked)
 
 
 def scale_points(points: int, maximum: int, scale: int = GRADE_SCALE) -> Decimal:

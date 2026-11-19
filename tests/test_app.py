@@ -328,14 +328,20 @@ def test_total_is_shown_above_and_below_ticket() -> None:
     assert totals(at) == ["**Баллы: 0 / 100 (0.0 / 26)**"] * 2
 
 
-def test_total_counts_only_accepted_answers() -> None:
+def test_total_counts_all_question_scores() -> None:
     at = generate(pick(new_app()))
     at.checkbox(key="accepted_0").check().run()
-    at.number_input(key="score_1").set_value(32).run()
-    at.checkbox(key="accepted_2").check().run()
+    at.number_input(key="score_1").set_value(20).run()
     at.number_input(key="score_2").set_value(30).run()
-    # 24 + 30 = 54 (32 не принято) → 54 × 26 / 100 = 14.04 → 14.0
-    assert totals(at)[0] == "**Баллы: 54 / 100 (14.0 / 26)**"
+    # 24 + 20 + 30 = 74 → 74 × 26 / 100 = 19.24 → 19.2
+    assert totals(at)[0] == "**Баллы: 74 / 100 (19.2 / 26)**"
+
+
+def test_total_reacts_to_subitems_of_not_accepted_question() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="sub_1_0_checked").check().run()
+    at.checkbox(key="sub_1_1_checked").check().run()
+    assert totals(at) == ["**Баллы: 8 / 100 (2.1 / 26)**"] * 2
 
 
 def test_score_is_limited_by_level_maximum() -> None:

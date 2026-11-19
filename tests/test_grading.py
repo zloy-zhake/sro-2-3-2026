@@ -7,18 +7,18 @@ import pytest
 from exam_tickets.grading import (
     GRADE_SCALE,
     SUBITEM_POINTS,
-    accepted_total,
+    checked_total,
     scale_points,
 )
 from exam_tickets.models import LEVEL_ORDER, LEVEL_POINTS, LevelKey
 
 
-def test_accepted_total_ignores_not_accepted_answers() -> None:
-    assert accepted_total(scores=[(True, 24), (False, 32), (True, 30)]) == 54
+def test_checked_total_ignores_unchecked_subitems() -> None:
+    assert checked_total(scores=[(True, 24), (False, 32), (True, 30)]) == 54
 
 
-def test_accepted_total_is_zero_when_nothing_accepted() -> None:
-    assert accepted_total(scores=[(False, 24), (False, 32), (False, 44)]) == 0
+def test_checked_total_is_zero_when_nothing_checked() -> None:
+    assert checked_total(scores=[(False, 24), (False, 32), (False, 44)]) == 0
 
 
 def test_scale_points_rounds_to_tenths() -> None:

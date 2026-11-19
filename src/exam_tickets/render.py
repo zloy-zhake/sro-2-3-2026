@@ -177,7 +177,8 @@ def format_chapter_ref(chapter: ChapterFile, language: Lang) -> str:
     first, last = chapter.chapters[0], chapter.chapters[-1]
     is_range = first != last
     number = f"{first}–{last}" if is_range else str(first)
-    if language is Lang.RU:
+    # ``==``, а не ``is``: язык может прийти из главы в кэше со старым классом Lang.
+    if language == Lang.RU:
         word = "Главы" if is_range else "Глава"
         return f"{word} {number} {titles}"
     word = "тараулар" if is_range else "тарау"

@@ -2,8 +2,10 @@
 
 import random
 import shutil
+from enum import StrEnum
 from importlib.resources import files
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -189,3 +191,18 @@ def test_pool_of_unknown_combination_is_empty(dataset: Dataset) -> None:
         dataset=dataset, subject="java", language=Lang.RU, stage=Stage.SRO2
     )
     assert empty_levels(pool=pool) == list(LEVEL_ORDER)
+
+
+class ReloadedStage(StrEnum):
+    """Двойник Stage: так выглядит этап после горячей перезагрузки Streamlit."""
+
+    SRO2 = "sro2"
+    SRO3 = "sro3"
+
+
+def test_build_pool_accepts_stage_from_reloaded_module(dataset: Dataset) -> None:
+    # Главы в кэше хранят экземпляры старого класса Stage: значения равны,
+    # объекты — нет, поэтому фильтр по этапу обязан сравнивать через ==.
+    stage = cast(Stage, ReloadedStage.SRO2)
+    pool = build_pool(dataset=dataset, subject="docker", language=Lang.RU, stage=stage)
+    assert empty_levels(pool=pool) == []

@@ -426,7 +426,9 @@ def _render_subitems(item: PoolItem, position: int) -> None:
     points = SUBITEM_POINTS[item.level]
     args = (position, len(points))
     for index, maximum in enumerate(points):
-        is_defense = item.level is DEFENSE_LEVEL and index == len(points) - 1
+        # ``==``, а не ``is``: задание в состоянии сессии может хранить уровень
+        # старого класса LevelKey после горячей перезагрузки модулей.
+        is_defense = item.level == DEFENSE_LEVEL and index == len(points) - 1
         name = t("defense", lang) if is_defense else str(index + 1)
         label = t("subitem", lang, name=name, points=str(maximum))
         # Горизонтальный контейнер, а не st.columns: колонки делят ширину

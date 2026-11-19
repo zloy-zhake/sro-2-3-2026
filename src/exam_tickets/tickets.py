@@ -64,7 +64,10 @@ def build_pool(dataset: Dataset, subject: str, language: Lang, stage: Stage) -> 
     """
     pool: Pool = {level: [] for level in LEVEL_ORDER}
     for chapter in dataset.files(subject=subject, language=language):
-        if chapter.stage is not stage:
+        # Сравниваем значения, а не объекты: после горячей перезагрузки модулей
+        # в Streamlit главы из кэша хранят экземпляр старого класса Stage, и
+        # ``is`` отбросил бы их все — пул оказался бы пустым на всех уровнях.
+        if chapter.stage != stage:
             continue
         for level in LEVEL_ORDER:
             pool[level] += [

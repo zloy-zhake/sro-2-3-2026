@@ -1,7 +1,8 @@
 """Тесты рендера: экранирование, определение таблиц, ссылки на главы."""
 
+from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -166,3 +167,18 @@ def test_real_fsharp_quoted_spaces_do_not_trigger_tables() -> None:
         line for line, flag in zip(lines, table_mask(lines), strict=True) if flag
     ]
     assert not [line for line in flagged if '"  data  "' in line]
+
+
+class ReloadedLang(StrEnum):
+    """Двойник Lang: так выглядит язык после горячей перезагрузки Streamlit."""
+
+    RU = "ru"
+    KK = "kk"
+
+
+def test_ref_ru_with_language_from_reloaded_module(
+    chapter_data: dict[str, Any],
+) -> None:
+    c = chapter(chapter_data, chapter_titles=["Images"])
+    language = cast(Lang, ReloadedLang.RU)
+    assert format_chapter_ref(c, language) == "Глава 3 «Images»"

@@ -43,6 +43,9 @@ _STAGES: tuple[Stage, ...] = (Stage.SRO2, Stage.SRO3)
 # Казахский идёт первым: он язык интерфейса по умолчанию.
 _UI_LANGUAGES: tuple[Lang, ...] = (Lang.KK, Lang.RU)
 _DEFAULT_UI_LANG: Lang = Lang.KK
+# Ширина поля балла подпункта в пикселях — под трёхзначное число. На такой
+# ширине Streamlit сам прячет кнопки −/+, остаётся только ввод.
+_SUBITEM_INPUT_WIDTH = 80
 
 
 @st.cache_resource
@@ -401,17 +404,18 @@ def _render_subitems(item: PoolItem, position: int) -> None:
     for index, maximum in enumerate(points):
         is_defense = item.level is DEFENSE_LEVEL and index == len(points) - 1
         name = t("defense", lang) if is_defense else str(index + 1)
-        left, right = st.columns(2, vertical_alignment="center")
-        with left:
+        label = t("subitem", lang, name=name, points=str(maximum))
+        # Горизонтальный контейнер, а не st.columns: колонки делят ширину
+        # поровну и оставляют пустоту между галочкой и полем.
+        with st.container(horizontal=True, vertical_alignment="center"):
             st.checkbox(
-                t("subitem", lang, name=name, points=str(maximum)),
+                label,
                 key=_sub_checked_key(position, index),
                 on_change=_on_subitem,
                 args=args,
             )
-        with right:
             st.number_input(
-                t("subitem", lang, name=name, points=str(maximum)),
+                label,
                 min_value=0,
                 max_value=maximum,
                 step=1,
@@ -419,6 +423,7 @@ def _render_subitems(item: PoolItem, position: int) -> None:
                 on_change=_on_subitem,
                 args=args,
                 label_visibility="collapsed",
+                width=_SUBITEM_INPUT_WIDTH,
             )
 
 

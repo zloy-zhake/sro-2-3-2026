@@ -323,9 +323,9 @@ def test_systemic_last_subitem_is_defense() -> None:
     assert at.checkbox(key="sub_2_4_checked").label == "Защита (12 б.)"
 
 
-def test_total_is_shown_above_and_below_ticket() -> None:
+def test_total_is_shown_on_top_and_after_each_grading_form() -> None:
     at = generate(pick(new_app()))
-    assert totals(at) == ["**Баллы: 0 / 100 (0.0 / 26)**"] * 2
+    assert totals(at) == ["**Баллы: 0 / 100 (0.0 / 26)**"] * 4
 
 
 def test_total_counts_all_question_scores() -> None:
@@ -341,7 +341,7 @@ def test_total_reacts_to_subitems_of_not_accepted_question() -> None:
     at = generate(pick(new_app()))
     at.checkbox(key="sub_1_0_checked").check().run()
     at.checkbox(key="sub_1_1_checked").check().run()
-    assert totals(at) == ["**Баллы: 8 / 100 (2.1 / 26)**"] * 2
+    assert totals(at) == ["**Баллы: 8 / 100 (2.1 / 26)**"] * 4
 
 
 def test_score_is_limited_by_level_maximum() -> None:

@@ -508,6 +508,10 @@ def _render_item(item: PoolItem) -> None:
 def _render_ticket(ticket: Ticket) -> None:
     """Рисует билет: три вопроса сверху вниз.
 
+    Общая сумма выводится сверху и после формы оценивания каждого вопроса,
+    чтобы итог был виден, где бы преподаватель ни ставил баллы. Сумма после
+    последней формы служит и нижней суммой задания.
+
     Args:
         ticket: Текущий билет.
     """
@@ -518,8 +522,7 @@ def _render_ticket(ticket: Ticket) -> None:
             st.divider()
         _render_item(item)
         _render_grading(item=item, position=position)
-    st.divider()
-    _render_total(ticket=ticket)
+        _render_total(ticket=ticket)
 
 
 def main() -> None:

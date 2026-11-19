@@ -4,7 +4,13 @@ from decimal import Decimal
 
 import pytest
 
-from exam_tickets.grading import GRADE_SCALE, accepted_total, scale_points
+from exam_tickets.grading import (
+    GRADE_SCALE,
+    SUBITEM_POINTS,
+    accepted_total,
+    scale_points,
+)
+from exam_tickets.models import LEVEL_ORDER, LEVEL_POINTS, LevelKey
 
 
 def test_accepted_total_ignores_not_accepted_answers() -> None:
@@ -31,3 +37,8 @@ def test_scale_points_full_score_gives_full_scale() -> None:
 def test_scale_points_rejects_non_positive_maximum() -> None:
     with pytest.raises(ValueError, match="положительным"):
         scale_points(points=0, maximum=0)
+
+
+@pytest.mark.parametrize("level", LEVEL_ORDER)
+def test_subitem_points_sum_to_level_points(level: LevelKey) -> None:
+    assert sum(SUBITEM_POINTS[level]) == LEVEL_POINTS[level]

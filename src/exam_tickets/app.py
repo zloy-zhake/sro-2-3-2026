@@ -16,7 +16,13 @@ import streamlit as st
 
 from exam_tickets.dataset import Dataset
 from exam_tickets.exceptions import DataError
-from exam_tickets.grading import GRADE_SCALE, accepted_total, scale_points
+from exam_tickets.grading import (
+    DEFENSE_LEVEL,
+    GRADE_SCALE,
+    SUBITEM_POINTS,
+    accepted_total,
+    scale_points,
+)
 from exam_tickets.i18n import t
 from exam_tickets.models import Lang, Stage
 from exam_tickets.render import format_chapter_ref, render_text
@@ -140,9 +146,12 @@ def _on_generate() -> None:
     )
     # Оценки прошлого задания к новым вопросам не относятся: удаляем ключи,
     # и _init_grading заново выставит значения по умолчанию.
-    for position in range(len(state["ticket"].items)):
+    for position, item in enumerate(state["ticket"].items):
         state.pop(_accepted_key(position), None)
         state.pop(_score_key(position), None)
+        for index in range(len(SUBITEM_POINTS[item.level])):
+            state.pop(_sub_checked_key(position, index), None)
+            state.pop(_sub_points_key(position, index), None)
 
 
 def _init_state() -> None:
@@ -278,8 +287,59 @@ def _score_key(position: int) -> str:
     return f"score_{position}"
 
 
+def _sub_checked_key(position: int, index: int) -> str:
+    """Ключ галочки подпункта вопроса.
+
+    Args:
+        position: Номер вопроса в задании, с нуля.
+        index: Номер подпункта внутри вопроса, с нуля.
+
+    Returns:
+        Ключ виджета в ``st.session_state``.
+    """
+    return f"sub_{position}_{index}_checked"
+
+
+def _sub_points_key(position: int, index: int) -> str:
+    """Ключ поля балла подпункта вопроса.
+
+    Args:
+        position: Номер вопроса в задании, с нуля.
+        index: Номер подпункта внутри вопроса, с нуля.
+
+    Returns:
+        Ключ виджета в ``st.session_state``.
+    """
+    return f"sub_{position}_{index}_points"
+
+
+def _on_subitem(position: int, count: int) -> None:
+    """Пересчитывает балл вопроса как сумму отмеченных подпунктов.
+
+    Пишем в поле вопроса только при изменении подпункта: ручная правка поля
+    вопроса сохраняется, пока преподаватель снова не тронет подпункты.
+    Запись идёт в колбэке — после отрисовки виджета в прогоне это запрещено.
+
+    Args:
+        position: Номер вопроса в задании, с нуля.
+        count: Число подпунктов у вопроса.
+    """
+    state = st.session_state
+    scores = [
+        (
+            bool(state[_sub_checked_key(position, index)]),
+            int(state[_sub_points_key(position, index)]),
+        )
+        for index in range(count)
+    ]
+    state[_score_key(position)] = accepted_total(scores=scores)
+
+
 def _init_grading(ticket: Ticket) -> None:
-    """Задаёт значения оценки по умолчанию: «не принято» и максимум уровня.
+    """Задаёт значения оценки по умолчанию.
+
+    Вопрос не принят, подпункты не отмечены (их поля — максимум подпункта),
+    поэтому балл вопроса — 0, то есть сумма отмеченных подпунктов.
 
     Значения пишутся в состояние до отрисовки виджетов, а не через ``value=``:
     иначе Streamlit предупредит о двух источниках значения (как и в
@@ -288,10 +348,13 @@ def _init_grading(ticket: Ticket) -> None:
     Args:
         ticket: Текущее задание.
     """
+    state = st.session_state
     for position, item in enumerate(ticket.items):
-        maximum = item.chapter.levels[item.level].points
-        st.session_state.setdefault(_accepted_key(position), False)
-        st.session_state.setdefault(_score_key(position), maximum)
+        state.setdefault(_accepted_key(position), False)
+        state.setdefault(_score_key(position), 0)
+        for index, points in enumerate(SUBITEM_POINTS[item.level]):
+            state.setdefault(_sub_checked_key(position, index), False)
+            state.setdefault(_sub_points_key(position, index), points)
 
 
 def _render_total(ticket: Ticket) -> None:
@@ -322,6 +385,43 @@ def _render_total(ticket: Ticket) -> None:
     )
 
 
+def _render_subitems(item: PoolItem, position: int) -> None:
+    """Рисует подпункты вопроса: галочку и поле балла у каждого.
+
+    Поле подпункта нужно для частичного балла (например, «верно» без полного
+    обоснования); оно ограничено 0…максимумом подпункта.
+
+    Args:
+        item: Вопрос задания.
+        position: Номер вопроса в задании, с нуля.
+    """
+    lang = _ui_lang()
+    points = SUBITEM_POINTS[item.level]
+    args = (position, len(points))
+    for index, maximum in enumerate(points):
+        is_defense = item.level is DEFENSE_LEVEL and index == len(points) - 1
+        name = t("defense", lang) if is_defense else str(index + 1)
+        left, right = st.columns(2, vertical_alignment="center")
+        with left:
+            st.checkbox(
+                t("subitem", lang, name=name, points=str(maximum)),
+                key=_sub_checked_key(position, index),
+                on_change=_on_subitem,
+                args=args,
+            )
+        with right:
+            st.number_input(
+                t("subitem", lang, name=name, points=str(maximum)),
+                min_value=0,
+                max_value=maximum,
+                step=1,
+                key=_sub_points_key(position, index),
+                on_change=_on_subitem,
+                args=args,
+                label_visibility="collapsed",
+            )
+
+
 def _render_grading(item: PoolItem, position: int) -> None:
     """Рисует под вопросом галочку «принято» и поле балла.
 
@@ -332,6 +432,7 @@ def _render_grading(item: PoolItem, position: int) -> None:
         item: Вопрос задания.
         position: Номер вопроса в задании, с нуля.
     """
+    _render_subitems(item=item, position=position)
     lang = _ui_lang()
     maximum = item.chapter.levels[item.level].points
     left, right = st.columns(2, vertical_alignment="bottom")

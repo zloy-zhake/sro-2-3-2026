@@ -330,11 +330,10 @@ def test_total_is_shown_above_and_below_ticket() -> None:
 
 def test_total_counts_only_accepted_answers() -> None:
     at = generate(pick(new_app()))
-    at.number_input(key="score_0").set_value(24).run()
     at.checkbox(key="accepted_0").check().run()
     at.number_input(key="score_1").set_value(32).run()
-    at.number_input(key="score_2").set_value(30).run()
     at.checkbox(key="accepted_2").check().run()
+    at.number_input(key="score_2").set_value(30).run()
     # 24 + 30 = 54 (32 не принято) → 54 × 26 / 100 = 14.04 → 14.0
     assert totals(at)[0] == "**Баллы: 54 / 100 (14.0 / 26)**"
 
@@ -364,3 +363,35 @@ def test_grading_survives_ui_language_change() -> None:
     at.checkbox(key="accepted_1").check().run()
     at.radio(key="ui_lang").set_value("Қазақша").run()
     assert at.checkbox(key="accepted_1").value
+
+
+def test_accepting_checks_all_subitems_with_max_points() -> None:
+    at = generate(pick(new_app()))
+    at.number_input(key="sub_0_1_points").set_value(2).run()
+    at.checkbox(key="accepted_0").check().run()
+    checked = [at.checkbox(key=f"sub_0_{i}_checked").value for i in range(5)]
+    points = [at.number_input(key=f"sub_0_{i}_points").value for i in range(5)]
+    assert (checked, points) == ([True] * 5, [5, 5, 5, 5, 4])
+
+
+def test_accepting_sets_question_score_to_level_max() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="accepted_2").check().run()
+    assert at.number_input(key="score_2").value == 44
+
+
+def test_unaccepting_unchecks_subitems_but_keeps_their_points() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="accepted_0").check().run()
+    at.number_input(key="sub_0_1_points").set_value(3).run()
+    at.checkbox(key="accepted_0").uncheck().run()
+    checked = [at.checkbox(key=f"sub_0_{i}_checked").value for i in range(5)]
+    points = [at.number_input(key=f"sub_0_{i}_points").value for i in range(5)]
+    assert (checked, points) == ([False] * 5, [5, 3, 5, 5, 4])
+
+
+def test_unaccepting_resets_question_score_to_zero() -> None:
+    at = generate(pick(new_app()))
+    at.checkbox(key="accepted_0").check().run()
+    at.checkbox(key="accepted_0").uncheck().run()
+    assert at.number_input(key="score_0").value == 0

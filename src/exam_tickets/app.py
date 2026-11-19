@@ -24,7 +24,7 @@ from exam_tickets.grading import (
     scale_points,
 )
 from exam_tickets.i18n import t
-from exam_tickets.models import Lang, Stage
+from exam_tickets.models import Lang, LevelKey, Stage
 from exam_tickets.render import format_chapter_ref, render_text
 from exam_tickets.tickets import (
     PoolItem,
@@ -338,6 +338,28 @@ def _on_subitem(position: int, count: int) -> None:
     state[_score_key(position)] = accepted_total(scores=scores)
 
 
+def _on_accepted(position: int, level: LevelKey) -> None:
+    """Синхронизирует подпункты с галочкой «принято».
+
+    Принятие — частый случай «ответ полностью верный», поэтому оно отмечает
+    все подпункты с максимальными баллами. Снятие лишь снимает галочки
+    подпунктов: введённые частичные баллы остаются, чтобы не вводить их
+    заново при повторном выборе. Балл вопроса пересчитывается как обычно.
+
+    Args:
+        position: Номер вопроса в задании, с нуля.
+        level: Уровень вопроса — по нему берётся схема подпунктов.
+    """
+    state = st.session_state
+    accepted = bool(state[_accepted_key(position)])
+    points = SUBITEM_POINTS[level]
+    for index, maximum in enumerate(points):
+        state[_sub_checked_key(position, index)] = accepted
+        if accepted:
+            state[_sub_points_key(position, index)] = maximum
+    _on_subitem(position=position, count=len(points))
+
+
 def _init_grading(ticket: Ticket) -> None:
     """Задаёт значения оценки по умолчанию.
 
@@ -442,7 +464,12 @@ def _render_grading(item: PoolItem, position: int) -> None:
     maximum = item.chapter.levels[item.level].points
     left, right = st.columns(2, vertical_alignment="bottom")
     with left:
-        st.checkbox(t("accepted", lang), key=_accepted_key(position))
+        st.checkbox(
+            t("accepted", lang),
+            key=_accepted_key(position),
+            on_change=_on_accepted,
+            args=(position, item.level),
+        )
     with right:
         st.number_input(
             f"{t('score', lang)} (0–{maximum})",

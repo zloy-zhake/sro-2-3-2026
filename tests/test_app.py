@@ -320,7 +320,7 @@ def test_manual_question_score_survives_until_subitem_changes() -> None:
 
 def test_systemic_last_subitem_is_defense() -> None:
     at = generate(pick(new_app()))
-    assert at.checkbox(key="sub_2_4_checked").label == "Защита (макс. 12)"
+    assert at.checkbox(key="sub_2_4_checked").label == "Защита (12 б.)"
 
 
 def test_total_is_shown_above_and_below_ticket() -> None:

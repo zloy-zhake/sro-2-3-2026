@@ -45,8 +45,8 @@ STRINGS: dict[str, dict[Lang, str]] = {
     "accepted": {Lang.RU: "Принято", Lang.KK: "Қабылданды"},
     "score": {Lang.RU: "Балл", Lang.KK: "Ұпай"},
     "subitem": {
-        Lang.RU: "{name} (макс. {points})",
-        Lang.KK: "{name} (ең көбі {points})",
+        Lang.RU: "{name} ({points} б.)",
+        Lang.KK: "{name} ({points} б.)",
     },
     "defense": {Lang.RU: "Защита", Lang.KK: "Қорғау"},
     "score_total": {
